@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        USER_UID: 1000
+        USER_GID: 1000
+    init: true
+    volumes:
+      - .:/workspace:cached
+      - llm_models:/workspace/models:cached
+    command: sleep infinity
+    restart: no
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: '24gb'
+    environment:
+      FORCE_CUDA: 1
+      CUDA_VISIBLE_DEVICES: 0
+
+volumes:
+  llm_models:
+    external: true

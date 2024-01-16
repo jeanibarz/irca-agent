@@ -1,0 +1,28 @@
+{
+  "name": "irca-agent-devcontainer",
+  "dockerComposeFile": "../docker-compose.dev.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "postCreateCommand": "bash ./.devcontainer/post-create-wrapper.bash",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode-remote.remote-containers",
+        "redhat.vscode-yaml",
+        "aaron-bond.better-comments",
+        "wowbox.code-debuger",
+        "bierner.markdown-mermaid",
+        "rogalmic.bash-debug"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "eslint.alwaysShowStatus": true
+      }
+    }
+  }
+}
