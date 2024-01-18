@@ -1,7 +1,3 @@
-# Notes:
-# - available functions must be a single line list of json schemas
-# - agent scratchpad must always end with a new line separator (i.e. LLM completion starts at char 0 of a new line)
-
 prompt_template = """\
 ### INSTRUCTIONS
 Your task is to generate a query that the user could make to the AI. You must ensure that the AI {does_or_does_not} have the appropriate functions to fulfill the query.
