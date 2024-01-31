@@ -1,3 +1,27 @@
+## src/prompt_builder.py
+
+`prompt_builder.py` is a critical module in the IRCA-Agent project that focuses on constructing and formatting prompts for the Large Language Model (LLM). This file contains functions for building prompts, parsing data, and applying various formatting techniques. The key functionalities are as follows:
+
+### build_full_prompt
+- **Purpose**: To construct a comprehensive prompt that includes system instructions, examples, available functions, user queries, and assistant completions.
+- **Use Case**: Essential for creating structured and detailed prompts needed for training or querying the LLM.
+
+### parse_corrected_agent_trace
+- **Purpose**: To extract and separate different parts of a given full prompt, such as system instructions, examples, available functions, user queries, and assistant completions.
+- **Use Case**: Useful for parsing and analyzing the structure of prompts, which can be critical for both training the model and understanding its responses.
+
+### randomize_newline_characters
+- **Purpose**: To randomize newline characters in a text, choosing between `\n` and `\r\n`.
+- **Use Case**: This function aids in ensuring that the text formatting remains consistent and compatible across different operating systems and platforms.
+
+### randomize_system_instructions_formatting
+- **Purpose**: To randomly choose and apply different formatting styles to system instructions within a prompt.
+- **Use Case**: Enhances the diversity in prompt presentation, which can be beneficial for training the model to understand and respond to varied text formats.
+
+### format_instruction
+- **Purpose**: To format a given sample by parsing its corrected agent trace and applying randomization in newline characters and system instructions formatting.
+- **Use Case**: Utilized in the preprocessing stage of data for training, ensuring that the LLM is exposed to a variety of prompt formats.
+
 ## src/utils.py
 
 `utils.py` is a utility module in the IRCA-Agent project that provides essential helper functions used across various parts of the project. This file includes functions for text processing, model parameter analysis, and data manipulation. Here's an overview of the key functions and their purposes:
