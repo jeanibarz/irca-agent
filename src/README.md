@@ -1,3 +1,27 @@
+## src/guided_generation.py
+
+`guided_generation.py` is an essential module in the IRCA-Agent project, designed to handle the generation of guided prompts and agent traces for training and testing purposes. This file includes classes and methods that facilitate the creation of dynamic and contextually rich prompts based on a set of specified parameters and distribution functions. Here are the key components:
+
+### Class: GuidedPromptGenerator
+- **Purpose**: To generate guided prompts based on a configurable set of parameters. This class includes methods for random subset generation, prompt generation, and workflow creation.
+- **Key Methods**:
+  - `generate_random_subset`: Generates a random subset of functions using a specified distribution function, supporting JSON format output.
+  - `generate_irca_agent_trace`: Creates a complete IRCA agent trace, including user queries, agent thoughts, function calls, and final answers.
+
+#### Details:
+- **Model Initialization**: The class initializes a model (either `LlamaCpp` or `Transformers` model) based on the provided configuration, which includes model path, minimum and maximum function counts, distribution parameters, etc.
+- **Distribution Functions**: Supports uniform and beta distributions for sampling functions, allowing for a diverse range of prompt structures.
+- **Workflow Creation**: Generates a detailed workflow that simulates a user query, agent response, and iterative process of function calls and agent thoughts.
+
+### Workflow Generation Process:
+1. **User Query Generation**: Utilizes templates and the model to generate a user query based on available functions.
+2. **Agent Thought and Function Calls**: Iteratively generates agent thoughts and function calls to create a detailed trace of the agent's decision-making process.
+3. **Synthetic Function Output Generation**: Includes the generation of synthetic function outputs to simulate realistic agent interactions.
+4. **Final Answer Generation**: Concludes the workflow with the generation of a final answer by the agent.
+
+### Integration with Argilla:
+- **Record Creation and Pushing**: If configured, the module can create and push records to an Argilla dataset for further analysis or training.
+
 ## src/model_training.py
 
 `model_training.py` is a crucial module in the IRCA-Agent project, dedicated to the fine-tuning and training of the Large Language Model (LLM). This file encompasses various functionalities ranging from model configuration to the actual training process. Below are the key components and their roles:
