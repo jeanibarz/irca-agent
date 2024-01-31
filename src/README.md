@@ -1,3 +1,25 @@
+## src/generation.py
+
+`generation.py` is a key module in the IRCA-Agent project, focusing on generating user queries based on a set of available functions. This file includes a class that facilitates the generation of function subsets and user queries using distribution functions and OpenAI's GPT models. Key functionalities of this module are as follows:
+
+### Class: PromptGenerator
+- **Purpose**: To generate random subsets of functions and user queries based on the provided configuration parameters.
+- **Key Methods**:
+  - `generate_random_subset`: Generates a random subset of functions using a specified distribution function, with an option to return the subset in JSON format.
+  - `generate_user_query`: Generates a user query based on the available functions and a specified satisfiability condition using OpenAI's GPT models.
+
+#### Details:
+- **Initialization**: Sets default configuration values for the number of functions to sample and distribution parameters, and updates them with any provided configuration.
+- **Distribution Functions**: Supports both uniform and beta distributions for generating function subsets, offering flexibility in sampling.
+- **User Query Generation**: Uses a template and OpenAI's GPT models to generate a user query that corresponds to the available functions.
+
+### User Query Generation Process:
+1. **Template Formatting**: Formats a prompt template with the available functions and satisfiability condition.
+2. **Query Generation**: Utilizes OpenAI's GPT models to generate a user query based on the formatted prompt.
+3. **Record Creation and Pushing**: Optionally, the module can create and push records to an Argilla dataset for further analysis or training, capturing details like the available functions and the original user query.
+
+This module plays a significant role in the project by automating the generation of user queries, which are essential for training the LLM and testing its capabilities in understanding and responding to various user requests. The flexibility in distribution functions for function sampling also adds diversity to the generated queries.
+
 ## src/guided_generation.py
 
 `guided_generation.py` is an essential module in the IRCA-Agent project, designed to handle the generation of guided prompts and agent traces for training and testing purposes. This file includes classes and methods that facilitate the creation of dynamic and contextually rich prompts based on a set of specified parameters and distribution functions. Here are the key components:
