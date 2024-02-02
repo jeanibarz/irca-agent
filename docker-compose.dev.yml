@@ -26,7 +26,8 @@ services:
     environment:
       FORCE_CUDA: 1
       CUDA_VISIBLE_DEVICES: 0
-
+      PYTHONPATH: "/workspace/src:/workspace/schemas:/workspace/defaults"
+      HF_HOME: "/workspace/models"
 volumes:
   llm_models:
     external: true

@@ -1,5 +1,5 @@
 {
-  "name": "irca-agent-devcontainer",
+  "name": "irca_agent_devcontainer",
   "dockerComposeFile": "../docker-compose.dev.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
@@ -16,13 +16,21 @@
         "aaron-bond.better-comments",
         "wowbox.code-debuger",
         "bierner.markdown-mermaid",
-        "rogalmic.bash-debug"
+        "rogalmic.bash-debug",
+        "p1c2u.docker-compose",
+        "ms-azuretools.vscode-docker"
       ],
       "settings": {
+        "terminal.integrated.shell.linux": "bash",
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
-        "eslint.alwaysShowStatus": true
+        "editor.rulers": [100, 119, 140],
+        "black-formatter.args": ["--line-length", "119"],
+        "python.analysis.extraPaths": [
+          "${workspaceFolder}/src",
+          "${workspaceFolder}/schemas",
+          "${workspaceFolder}/defaults"
+        ]
       }
-    }
   }
 }

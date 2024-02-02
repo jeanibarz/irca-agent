@@ -1,7 +1,7 @@
 # Use an official Python runtime with CUDA as a parent image
 FROM huggingface/transformers-pytorch-gpu
 
-ENV TZ=Europe/France
+ENV TZ=Europe/Paris
 ENV DEBIAN_FRONTEND noninteractive
 
 # Switch to the root user for system setup

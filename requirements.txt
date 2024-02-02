@@ -1,7 +1,7 @@
 python-dotenv
 shortuuid
 argilla
-torch==2.1.0
+torch
 trl==0.4.7
 peft==0.4.0
 accelerate==0.21.0
@@ -9,8 +9,9 @@ datasets==2.13.0
 transformers>4.35.0
 huggingface-hub==0.19.4
 sentencepiece==0.1.99
-bitsandbytes==0.41.1
+bitsandbytes==0.42.0
 gradio
 fsspec==2023.9.2
 tensorboard
 scipy
+jsonschema
