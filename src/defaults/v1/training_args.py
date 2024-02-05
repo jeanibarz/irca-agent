@@ -1,3 +1,4 @@
+# there arguments are used in src/model_finetuning.py
 training_args = {
     "dataset": "JeanIbarz/irca_agent_dataset_v5-5acc",
     "push_to_hub": False,
