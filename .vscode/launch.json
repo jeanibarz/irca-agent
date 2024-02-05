@@ -8,7 +8,7 @@
             "name": "Train Mistral",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/finetune_model.py",
+            "program": "${workspaceFolder}/src/model_finetuning.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": [
@@ -20,11 +20,47 @@
             "name": "Train TinyLlama",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/finetune_model.py",
+            "program": "${workspaceFolder}/src/model_finetuning.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": [
                 "--model_type", "tinyllama"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Train Eagle",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/model_finetuning.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": [
+                "--model_type", "eagle"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Train Snorkel",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/model_finetuning.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": [
+                "--model_type", "snorkel"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Model Evaluation",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/model_finetuning.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": [
+                "--model_type", "eval"
             ],
             "justMyCode": true
         }
