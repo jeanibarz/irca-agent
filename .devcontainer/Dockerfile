@@ -13,8 +13,10 @@ RUN apt-get update && apt-get install -y python3-venv sudo \
 
 # Create a vscode group and user
 RUN groupadd vscode && \
-    useradd -rm -d /home/vscode -s /bin/bash -g vscode -G sudo -u 1000 vscode && \
-    echo 'vscode:vscode' | chpasswd
+    useradd -rm -d /home/vscode -s /bin/bash -g vscode -G sudo -u 1000 vscode
+
+# Grant vscode user passwordless sudo privileges
+RUN echo "vscode ALL=(ALL) NOPASSWD: ALL" | tee /etc/sudoers.d/vscode
 
 # Create a virtual environment and activate it
 RUN python3 -m venv .venv
