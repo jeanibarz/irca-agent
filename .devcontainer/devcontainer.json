@@ -1,9 +1,9 @@
 {
   "name": "irca_agent_devcontainer",
   "dockerComposeFile": "../docker-compose.dev.yml",
-  "remoteUser": "vscode",
-  "containerUser": "vscode",
-  "updateRemoteUserUID": true,
+  // "remoteUser": "vscode",
+  // "containerUser": "vscode",
+  // "updateRemoteUserUID": true,
   "service": "app",
   "workspaceFolder": "/workspace",
   "postCreateCommand": "bash ./.devcontainer/post-create-wrapper.bash",
@@ -24,7 +24,7 @@
         "ms-azuretools.vscode-docker"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "python.defaultInterpreterPath": "/venv/bin/python",
         "python.formatting.provider": "none",
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
