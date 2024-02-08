@@ -1,4 +1,4 @@
-all_available_functions = [
+functions = [
     {
         "name": "get_random_joke",
         "description": "Fetch a random joke from an online joke database",
@@ -172,9 +172,7 @@ all_available_functions = [
         "description": "Read a provided text out loud using text-to-speech",
         "parameters": {
             "type": "object",
-            "properties": {
-                "text": {"type": "string", "description": "Text to be read out loud"}
-            },
+            "properties": {"text": {"type": "string", "description": "Text to be read out loud"}},
             "required": ["text"],
         },
     },
@@ -421,9 +419,7 @@ all_available_functions = [
         "description": "Post a tweet on Twitter",
         "parameters": {
             "type": "object",
-            "properties": {
-                "content": {"type": "string", "description": "Content of the tweet"}
-            },
+            "properties": {"content": {"type": "string", "description": "Content of the tweet"}},
             "required": ["content"],
         },
     },

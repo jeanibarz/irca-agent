@@ -2,7 +2,7 @@ import json
 import random
 
 
-from utils import extract_and_remove
+from core.utils import extract_and_remove
 
 # CHAT TEMPLATE EXAMPLE:
 # <|system|>
@@ -123,7 +123,7 @@ def randomize_system_instructions_formatting(system_instructions):
     return system_instructions
 
 
-def format_instruction(sample):
+def format_instruction(sample, random_augmentation=True):
     global iteration_nbr
     print(f"format {iteration_nbr}")
     iteration_nbr += 1
@@ -140,17 +140,19 @@ def format_instruction(sample):
 
     parsed_data = parse_corrected_agent_trace(full_prompt)
 
-    # Randomize the system_instructions formatting
-    parsed_data["system_instructions"] = randomize_system_instructions_formatting(
-        parsed_data["system_instructions"]
-    )
+    if random_augmentation:
+        # Randomize the system_instructions formatting
+        parsed_data["system_instructions"] = randomize_system_instructions_formatting(
+            parsed_data["system_instructions"]
+        )
 
     available_functions_json = parsed_data.get("available_functions_json", [])
     if available_functions_json:
         available_functions = json.loads(available_functions_json)
-        random.shuffle(available_functions)
-        parsed_data["available_functions_json"] = [
-            json.dumps(available_functions, indent=random.choice([None, 3, 4]))
-        ]
+        indent = None
+        if random_augmentation:
+            random.shuffle(available_functions)
+            indent = random.choice([None, 3, 4])
+        parsed_data["available_functions_json"] = [json.dumps(available_functions, indent=indent)]
     formatted_sample = build_full_prompt(parsed_data)
     return formatted_sample

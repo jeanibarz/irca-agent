@@ -1,4 +1,4 @@
-all_available_functions = [
+functions = [
     {
         "name": "get_exchange_rate",
         "description": "Get the exchange rate between two currencies",
@@ -225,9 +225,7 @@ all_available_functions = [
         "description": "Search for a movie by title",
         "parameters": {
             "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "The title of the movie"}
-            },
+            "properties": {"title": {"type": "string", "description": "The title of the movie"}},
             "required": ["title"],
         },
     },

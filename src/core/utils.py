@@ -37,9 +37,7 @@ def extract_and_remove(
         end_extract_idx = end_idx
 
     extracted_section = full_prompt[start_extract_idx:end_extract_idx].strip()
-    full_prompt = (
-        full_prompt[:start_idx].strip() + full_prompt[end_extract_idx:].strip()
-    )
+    full_prompt = full_prompt[:start_idx].strip() + full_prompt[end_extract_idx:].strip()
 
     return extracted_section, full_prompt
 

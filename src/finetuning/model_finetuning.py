@@ -11,8 +11,8 @@ import transformers
 import peft
 import huggingface_hub
 import dotenv
-import utils
-import prompt_builder
+import core.utils as utils
+import core.prompt_builder as prompt_builder
 
 from defaults.v1.training_args import training_args
 
@@ -26,7 +26,7 @@ MODELS_DIR = "models"
 FINETUNED_MODELS_DIR = "finetuned_models"
 LOG_LEVEL = logging.DEBUG
 VERSION = "v1"
-SCHEMA_PATH = f"/workspace/src/schemas/{VERSION}/training_args.json"
+SCHEMA_PATH = f"/workspace/src/core/schemas/{VERSION}/training_args.json"
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -95,6 +95,7 @@ def load_and_prepare_model(config, peft_config):
         quantization_config=bnb_config,
         use_cache=False,
         device_map="auto",
+        trust_remote_code=True,
     )
     model.config.pretraining_tp = 1
 
@@ -113,7 +114,7 @@ def setup_training(model, tokenizer, dataset, training_args, peft_config=None):
         output_dir=os.path.join(WORKSPACE_DIR, MODELS_DIR, FINETUNED_MODELS_DIR, training_args["model_name"]),
         num_train_epochs=training_args["num_train_epochs"],
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=3,
+        gradient_accumulation_steps=10,
         gradient_checkpointing=False,
         optim="adamw_8bit",
         logging_steps=2,

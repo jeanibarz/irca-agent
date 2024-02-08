@@ -1,4 +1,4 @@
-all_available_functions = [
+functions = [
     {
         "name": "news_service",
         "description": "Provide both the latest news headlines and a personalized news digest based on user preferences and selected categories",
@@ -802,4 +802,4 @@ all_available_functions = [
     },
 ]
 
-print([f["name"] for f in all_available_functions])
+print([f["name"] for f in functions])

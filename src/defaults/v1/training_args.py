@@ -3,11 +3,11 @@ training_args = {
     "dataset": "JeanIbarz/irca_agent_dataset_v5-5acc",
     "push_to_hub": False,
     "version": "v5-6",
-    "lora_r": 32,
+    "lora_r": 128,
     "lora_dropout": 0.05,
     "lora_alpha": 64,
     "num_train_epochs": 5,
-    "learning_rate": 5e-5,
+    "learning_rate": 1e-3,
     "model_settings": {
         "mistral": {
             "base_model": "mistralai/Mistral-7B-Instruct-v0.2",
@@ -24,6 +24,18 @@ training_args = {
         "snorkel": {
             "base_model": "snorkelai/Snorkel-Mistral-PairRM-DPO",
             "model_name": "Snorkel-Mistral-7B-no-data-augmentation",
+        },
+        "qwen1.5-4b": {
+            "base_model": "Qwen/Qwen1.5-4B-Chat",
+            "model_name": "Qwen1.5-4B-bis",
+        },
+        "qwen1.5-14b": {
+            "base_model": "Qwen/Qwen1.5-14B-Chat",
+            "model_name": "Qwen1.5-14B",
+        },
+        "minicpm-2b-sft": {
+            "base_model": "/workspace/models/MiniCPM-2B-sft-bf16",
+            "model_name": "MiniCPM-2B-sft",
         },
         "eval": {
             "base_model": "/workspace/models/finetuned_models/Snorkel-Mistral-7B_irca_agent_v5-6.gguf/checkpoint-122",
