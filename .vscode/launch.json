@@ -8,7 +8,7 @@
             "name": "Train Mistral",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/src/model_finetuning.py",
+            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": [
@@ -20,7 +20,7 @@
             "name": "Train TinyLlama",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/src/model_finetuning.py",
+            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": [
@@ -32,7 +32,7 @@
             "name": "Train Eagle",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/src/model_finetuning.py",
+            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": [
@@ -44,7 +44,7 @@
             "name": "Train Snorkel",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/src/model_finetuning.py",
+            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": [
@@ -53,10 +53,46 @@
             "justMyCode": true
         },
         {
+            "name": "Train Qwen1.5-4B",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": [
+                "--model_type", "qwen1.5-4b"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Train Qwen1.5-14B",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": [
+                "--model_type", "qwen1.5-14b"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Train MiniCPM-2B-sft",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": [
+                "--model_type", "minicpm-2b-sft"
+            ],
+            "justMyCode": true
+        },
+        {
             "name": "Model Evaluation",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/src/model_finetuning.py",
+            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": [
