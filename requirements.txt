@@ -3,7 +3,7 @@ shortuuid
 argilla
 torch
 trl==0.4.7
-peft==0.4.0
+peft==0.8.2
 accelerate==0.21.0
 datasets==2.13.0
 transformers>4.35.0
@@ -15,3 +15,4 @@ fsspec==2023.9.2
 tensorboard
 scipy
 jsonschema
+pydantic
