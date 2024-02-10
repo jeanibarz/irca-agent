@@ -22,7 +22,8 @@
         "rogalmic.bash-debug",
         "p1c2u.docker-compose",
         "ms-azuretools.vscode-docker",
-        "robocorp.robocorp-code"
+        "robocorp.robocorp-code",
+        "robocorp.robotframework-lsp"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/venv/bin/python",
@@ -34,7 +35,8 @@
         "python.analysis.extraPaths": [
           "${workspaceFolder}/src",
           "${workspaceFolder}/schemas",
-          "${workspaceFolder}/defaults"
+          "${workspaceFolder}/defaults",
+          "${workspaceFolder}/robocorp-action-server/irca-agent/."
         ]
       }
     }
