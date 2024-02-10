@@ -8,7 +8,7 @@ ENV DEBIAN_FRONTEND noninteractive
 WORKDIR /workspace
 
 # Install python3-venv before creating the virtual environment
-RUN apt-get update && apt-get install -y python3-venv sudo \
+RUN apt-get update && apt-get install -y python3-venv sudo curl \
     && rm -rf /var/lib/apt/lists/*
 
 # # Create a vscode group and user

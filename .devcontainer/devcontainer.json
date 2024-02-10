@@ -21,7 +21,8 @@
         "bierner.markdown-mermaid",
         "rogalmic.bash-debug",
         "p1c2u.docker-compose",
-        "ms-azuretools.vscode-docker"
+        "ms-azuretools.vscode-docker",
+        "robocorp.robocorp-code"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/venv/bin/python",

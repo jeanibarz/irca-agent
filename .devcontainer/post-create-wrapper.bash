@@ -19,4 +19,13 @@ CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install llama-cpp-python --forc
 pip install -r requirements.txt
 pip install pytest cmake scikit-build setuptools fastapi uvicorn sse-starlette pydantic-settings starlette-context guidance
 
+# Download Robocorp Action Server
+curl -o action-server https://downloads.robocorp.com/action-server/releases/latest/linux64/action-server
+chmod a+x action-server
+
+# Add to PATH or move to a folder that is in PATH
+sudo mv action-server /usr/local/bin/
+
+# To create an action-server, run action-server new
+
 echo "Dev Container successfully set up !"
