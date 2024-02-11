@@ -37,3 +37,10 @@ We use [pytz](https://pypi.org/project/pytz/) as an example to show that you can
 
 🚀 Now, go get'em
 
+## Google Cloud Authentication
+
+Generate a oauth2 user, download the json credentials
+Because the devcontainer doesn't contain a browser, we need to do the first authentication as follow:
+1. run the command `gcloud auth login --no-browser
+2. copy/paste the command that appears into your host computer with browser access
+3. paste the output in the console

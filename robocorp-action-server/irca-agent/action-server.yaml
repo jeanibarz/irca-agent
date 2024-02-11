@@ -13,3 +13,6 @@ dependencies:
       - robocorp-actions==0.0.7
       - pytz==2023.3
       - requests==2.31.0
+      - google-api-python-client
+      - google-auth-httplib2
+      - google-auth-oauthlib
