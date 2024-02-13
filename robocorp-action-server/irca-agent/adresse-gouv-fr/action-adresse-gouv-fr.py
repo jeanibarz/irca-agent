@@ -7,7 +7,7 @@ from robocorp.actions import action
 ADDOK_URL = "http://api-adresse.data.gouv.fr/search/"
 
 
-@action
+@action(is_consequential=False)
 def get_address_information(address: str, limit: int = 1) -> str:
     """
     Fetches information about an address using the ADDOK API.

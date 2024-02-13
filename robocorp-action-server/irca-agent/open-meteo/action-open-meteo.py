@@ -23,7 +23,7 @@ DATA_OPTIONS = {
 }
 
 
-@action
+@action(is_consequential=False)
 def get_current_weather_data(latitude: float, longitude: float, option: str) -> str:
     """
     Fetches current weather data from Open-Meteo API.
@@ -53,7 +53,7 @@ def get_current_weather_data(latitude: float, longitude: float, option: str) -> 
     return json.dumps(data, separators=(",", ":"))
 
 
-@action
+@action(is_consequential=False)
 def get_hourly_weather_data(latitude: float, longitude: float, option: str) -> str:
     """
     Fetches hourly weather data from Open-Meteo API.
@@ -83,7 +83,7 @@ def get_hourly_weather_data(latitude: float, longitude: float, option: str) -> s
     return json.dumps(data, separators=(",", ":"))
 
 
-@action
+@action(is_consequential=False)
 def get_past_weather_data(latitude: float, longitude: float, past_days: int, option: str) -> str:
     """
     Fetches past weather data for a specified number of past days from Open-Meteo API.
@@ -115,7 +115,7 @@ def get_past_weather_data(latitude: float, longitude: float, past_days: int, opt
     return json.dumps(data, separators=(",", ":"))
 
 
-@action
+@action(is_consequential=False)
 def get_historical_weather_data(latitude: float, longitude: float, start_date: str, end_date: str, option: str) -> str:
     """
     Fetches historical weather data from Open-Meteo API for a specified date range.

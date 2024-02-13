@@ -36,7 +36,7 @@ REDIRECT_URI = "http://localhost:8080/"
 MAX_RESULTS = 2500  # Maximum value as per Google Calendar API documentation
 
 
-@action
+@action(is_consequential=False)
 def get_calendar_events(
     calendar_id: str = "primary",
     time_min: str = "",
@@ -54,8 +54,8 @@ def get_calendar_events(
 
     Args:
         calendar_id (str): The ID of the calendar. Defaults to 'primary'.
-        time_min (str): The minimum time for events (inclusive) in RFC3339 format.
-        time_max (str): The maximum time for events (exclusive) in RFC3339 format.
+        time_min (str): The minimum time for events (inclusive) in RFC3339 format. Example: "2024-02-01T00:00:00Z"
+        time_max (str): The maximum time for events (exclusive) in RFC3339 format. Example: "2024-03-01T00:00:00Z"
         max_results (int): The maximum number of events to retrieve. Defaults to 2500.
         time_zone (str): The time zone used in the response. Defaults to the calendar's time zone.
         query (str): Free text search terms to find events matching the query.
@@ -96,14 +96,13 @@ def get_calendar_events(
         return f"An error occurred: {error}"
 
 
-@action
-def get_events_for_today(calendar_id: str) -> str:
+@action(is_consequential=False)
+def get_events_for_today(calendar_id: str = "primary") -> str:
     """
     Retrieve events for the current day from a specified Google Calendar.
 
     Args:
-        calendar_id (str): The ID of the calendar to retrieve events from.
-                           Example: 'primary' for the user's primary calendar.
+        calendar_id (str): The ID of the calendar. Defaults to 'primary'.
 
     Returns:
         str: A JSON string of the retrieved calendar events for today.
@@ -111,7 +110,9 @@ def get_events_for_today(calendar_id: str) -> str:
     today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + datetime.timedelta(days=1)
 
-    return get_calendar_events(calendar_id, 10, today_start.isoformat() + "Z", today_end.isoformat() + "Z")
+    return get_calendar_events(
+        calendar_id=calendar_id, time_min=today_start.isoformat() + "Z", time_max=today_end.isoformat() + "Z"
+    )
 
 
 def authenticate_user():

@@ -11,7 +11,7 @@ import requests
 from robocorp.actions import action
 
 
-@action
+@action(is_consequential=False)
 def get_a_random_joke() -> str:
     """Returns a random joke
 
@@ -31,7 +31,7 @@ def get_a_random_joke() -> str:
     return json.dumps(data, separators=(",", ":"))
 
 
-@action
+@action(is_consequential=False)
 def search_jokes(term: str) -> str:
     """Finds jokes for a given term.
 

@@ -11,7 +11,7 @@ from datetime import datetime
 import pytz
 
 
-@action
+@action(is_consequential=False)
 def compare_time_zones(user_timezone: str, compare_to_timezones: str) -> str:
     """
     Compares user timezone time difference to given timezones
