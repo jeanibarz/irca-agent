@@ -14,7 +14,7 @@ action-server start
 
 ### First-Time Authentication in Development Container
 - As the development container lacks a browser, initial authentication should be done using the following steps:
-  1. Execute `gcloud auth login --no-browser`.
+  1. Execute `gcloud auth login --no-launch-browser`.
   2. A command will be displayed. Copy and paste this command into your host computer that has browser access.
   3. After completing the authentication in the browser, copy the authentication code.
   4. Paste this code back into the console of the development container.
