@@ -23,7 +23,9 @@
         "p1c2u.docker-compose",
         "ms-azuretools.vscode-docker",
         "robocorp.robocorp-code",
-        "robocorp.robotframework-lsp"
+        "robocorp.robotframework-lsp",
+        "mhutchie.git-graph",
+        "GrapeCity.gc-excelviewer"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/venv/bin/python",
