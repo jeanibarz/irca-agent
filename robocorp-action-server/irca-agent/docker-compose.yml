@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  contextual-information-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_DIR: ./contextual-information-service
+    network_mode: bridge
+    ports:
+      - "8081:8080"
+
+  data-and-information-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_DIR: ./data-and-information-service
+    network_mode: bridge
+    ports:
+      - "8082:8080"
+
+  location-and-geography-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_DIR: ./location-and-geography-service
+    network_mode: bridge
+    ports:
+      - "8083:8080"  # Map host port 8083 to container port 8080
+
+  mail-manager-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_DIR: ./mail-manager-service
+    network_mode: bridge
+    ports:
+      - "8084:8080"
