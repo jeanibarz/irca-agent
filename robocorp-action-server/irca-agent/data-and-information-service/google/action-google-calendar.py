@@ -24,21 +24,14 @@ To implement the recommended approach, which is the standard web-based OAuth 2.0
   4. Paste this code back into the console of the development container.
 """
 
-import datetime
-import os.path
 import json
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from robocorp.actions import action
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/calendar"]
-REDIRECT_URI = "http://localhost:8080/"
+from google import utilities
 
 MAX_RESULTS = 2500  # Maximum value as per Google Calendar API documentation
 
@@ -78,7 +71,7 @@ def get_calendar_events(
     Returns:
         str: A JSON string of the retrieved calendar events.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("calendar", "v3", credentials=creds)
 
     try:
@@ -132,7 +125,7 @@ def create_calendar_event(
     Returns:
         str: A JSON string of the created calendar event.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("calendar", "v3", credentials=creds)
 
     # Convert the attendees string to a list of dictionaries
@@ -193,7 +186,7 @@ def update_calendar_event(
     Returns:
         str: A JSON string of the updated calendar event.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("calendar", "v3", credentials=creds)
 
     # Retrieve the existing event
@@ -255,7 +248,7 @@ def remove_event(calendar_id: str, event_id: str) -> str:
     Returns:
         str: A confirmation message indicating the result of the operation.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("calendar", "v3", credentials=creds)
 
     try:
@@ -263,31 +256,3 @@ def remove_event(calendar_id: str, event_id: str) -> str:
         return f"Event with ID {event_id} has been successfully deleted from calendar {calendar_id}."
     except HttpError as error:
         return f"An error occurred: {error}"
-
-
-def authenticate_user():
-    """Authenticate the user and return credentials."""
-    creds = None
-
-    # Save the current working directory
-    original_cwd = os.getcwd()
-
-    try:
-        # Change directory to the current file's directory
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-        if os.path.exists("token.json"):
-            creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES, redirect_uri=REDIRECT_URI)
-                creds = flow.run_local_server(port=8080)
-            with open("token.json", "w") as token:
-                token.write(creds.to_json())
-    finally:
-        # Restore the original working directory
-        os.chdir(original_cwd)
-
-    return creds

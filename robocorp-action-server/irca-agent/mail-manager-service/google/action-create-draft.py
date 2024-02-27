@@ -2,7 +2,7 @@ from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from robocorp.actions import action
 
-from . import utilities
+from google import utilities
 
 
 @action(is_consequential=False)

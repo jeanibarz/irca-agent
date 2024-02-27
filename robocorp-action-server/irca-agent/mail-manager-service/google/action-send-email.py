@@ -5,7 +5,7 @@ from googleapiclient.errors import HttpError
 from robocorp.actions import action
 from googleapiclient.discovery import build
 
-from . import utilities
+from google import utilities
 
 
 def create_mime_message(sender, to, subject, message_text):

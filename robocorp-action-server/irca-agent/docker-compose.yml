@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SERVICE_DIR: ./contextual-information-service
+        SERVICE_DIR: contextual-information-service
     network_mode: bridge
     ports:
       - "8081:8080"
@@ -16,7 +16,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SERVICE_DIR: ./data-and-information-service
+        SERVICE_DIR: data-and-information-service
     network_mode: bridge
     ports:
       - "8082:8080"
@@ -26,7 +26,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SERVICE_DIR: ./location-and-geography-service
+        SERVICE_DIR: location-and-geography-service
     network_mode: bridge
     ports:
       - "8083:8080"  # Map host port 8083 to container port 8080
@@ -36,7 +36,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SERVICE_DIR: ./mail-manager-service
+        SERVICE_DIR: mail-manager-service
     network_mode: bridge
     ports:
       - "8084:8080"

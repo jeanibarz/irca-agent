@@ -22,43 +22,12 @@ To implement the recommended approach, which is the standard web-based OAuth 2.0
   4. Paste this code back into the console of the development container.
 """
 
-from googleapiclient.discovery import build
-from robocorp.actions import action
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-import os.path
 import json
 
-# Scopes for Google Tasks API
-SCOPES = ["https://www.googleapis.com/auth/tasks"]
+from googleapiclient.discovery import build
+from robocorp.actions import action
 
-
-def authenticate_user():
-    """Authenticate the user and return credentials."""
-    creds = None
-    # Save the current working directory
-    original_cwd = os.getcwd()
-
-    try:
-        # Change directory to the current file's directory
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-        if os.path.exists("token.json"):
-            creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-                creds = flow.run_local_server(port=8080)
-            with open("token.json", "w") as token:
-                token.write(creds.to_json())
-    finally:
-        # Restore the original working directory
-        os.chdir(original_cwd)
-
-    return creds
+from google import utilities
 
 
 @action(is_consequential=False)
@@ -69,7 +38,7 @@ def list_tasklists() -> str:
     Returns:
         str: A JSON string of the retrieved task lists.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("tasks", "v1", credentials=creds)
 
     try:
@@ -91,7 +60,7 @@ def list_tasks(tasklist_id: str) -> str:
     Returns:
         str: A JSON string of the retrieved tasks.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("tasks", "v1", credentials=creds)
 
     try:
@@ -116,7 +85,7 @@ def create_task(tasklist_id: str, title: str, notes: str = "", due_date: str = "
     Returns:
         str: A JSON string of the created task.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("tasks", "v1", credentials=creds)
 
     task = {"title": title}
@@ -147,7 +116,7 @@ def update_task(tasklist_id: str, task_id: str, title: str = "", notes: str = ""
     Returns:
         str: A JSON string of the updated task.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("tasks", "v1", credentials=creds)
 
     task = {}
@@ -177,7 +146,7 @@ def delete_task(tasklist_id: str, task_id: str) -> str:
     Returns:
         str: A confirmation message of the deleted task.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("tasks", "v1", credentials=creds)
 
     try:
@@ -198,7 +167,7 @@ def create_tasklist(title: str) -> str:
     Returns:
         str: A JSON string of the created task list.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("tasks", "v1", credentials=creds)
 
     tasklist = {"title": title}
@@ -221,7 +190,7 @@ def delete_tasklist(tasklist_id: str) -> str:
     Returns:
         str: A confirmation message of the deleted task list.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("tasks", "v1", credentials=creds)
 
     try:
@@ -232,9 +201,9 @@ def delete_tasklist(tasklist_id: str) -> str:
 
 
 # # Example usage
-# if __name__ == "__main__":
-#     # print("Task Lists:")
-#     # print(list_tasklists())
+if __name__ == "__main__":
+    print("Task Lists:")
+    print(list_tasklists())
 #     # # After obtaining a valid tasklist ID, use it to list tasks
 #     # tasklist_id_example = "MDM4MDY0MTc0NTQ5MTQ5NzkwMjI6MDow"  # Replace with a valid tasklist ID
 #     # print("Tasks in List:")

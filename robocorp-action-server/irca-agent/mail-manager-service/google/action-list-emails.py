@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 from robocorp.actions import action
 import json
 
-from . import utilities
+from google import utilities
 
 
 @action(is_consequential=False)

@@ -9,7 +9,7 @@ import os.path
 import base64
 import os
 
-from . import utilities
+from google import utilities
 
 
 def download_attachment(service, user_id, message_id, attachment_id, file_name):

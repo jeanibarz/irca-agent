@@ -64,3 +64,7 @@ def create_message(sender, to, subject, message_text, include_signature=True):
     message["subject"] = subject
 
     return {"raw": base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")}
+
+
+if __name__ == "__main__":
+    authenticate_user()

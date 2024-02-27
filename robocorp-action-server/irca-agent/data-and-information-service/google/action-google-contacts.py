@@ -24,44 +24,13 @@ To implement the recommended approach, which is the standard web-based OAuth 2.0
   4. Paste this code back into the console of the development container.
 """
 
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from robocorp.actions import action
-from fuzzywuzzy import process
-import os.path
 import json
 
-# Scopes for Google People API
-SCOPES = ["https://www.googleapis.com/auth/contacts"]
+from googleapiclient.discovery import build
+from robocorp.actions import action
+from fuzzywuzzy import process
 
-
-def authenticate_user():
-    """Authenticate the user and return credentials."""
-    creds = None
-    # Save the current working directory
-    original_cwd = os.getcwd()
-
-    try:
-        # Change directory to the current file's directory
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-        if os.path.exists("token.json"):
-            creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-                creds = flow.run_local_server(port=8080)
-            with open("token.json", "w") as token:
-                token.write(creds.to_json())
-    finally:
-        # Restore the original working directory
-        os.chdir(original_cwd)
-
-    return creds
+from google import utilities
 
 
 @action(is_consequential=False)
@@ -72,7 +41,7 @@ def list_contacts() -> str:
     Returns:
         str: A JSON string of the retrieved contacts.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("people", "v1", credentials=creds)
 
     try:
@@ -106,7 +75,7 @@ def create_contact(display_name: str, email: str = "", phone_number: str = "") -
     Returns:
         str: A JSON string of the created contact.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("people", "v1", credentials=creds)
 
     contact_body = {
@@ -125,20 +94,17 @@ def create_contact(display_name: str, email: str = "", phone_number: str = "") -
 @action(is_consequential=False)
 def fuzzy_search_contacts(search_term: str, threshold: int = 80) -> str:
     """
-    Perform a fuzzy search on the user's Google Contacts, returning potential matches with individual scores for each field.
-
-    This function evaluates each contact's displayName, familyName, givenName, email, and phone number against the search term. A fuzzy matching score is computed for each field, and contacts with any field's score meeting or exceeding the specified threshold are returned as matches.
+    Executes a fuzzy search in Google Contacts to find matches by scoring each contact field.
+    Evaluates contacts based on displayName, familyName, givenName, email, and phone number.
+    Contacts with any field scoring at or above the threshold are selected as matches.
 
     Args:
         search_term (str): The term to search for in the contact's details.
         threshold (int): The similarity threshold for a match to be considered relevant (default 80).
 
     Returns:
-        str: A JSON string representing the list of contacts that match the search term. Each match includes the contact's details and a dictionary of scores for each evaluated field.
-
-    Note:
-        The matching scores are based on the Levenshtein Distance and indicate how closely each field matches the search term.
-        A higher score represents a closer match to the search term.
+        str: A JSON string representing the list of contacts that match the search term.
+             Each match includes the contact's details and a dictionary of scores for each evaluated field.
     """
     contacts_json = list_contacts()
     contacts = json.loads(contacts_json)
@@ -192,7 +158,7 @@ def update_contact(
     Returns:
         str: A JSON string of the updated contact.
     """
-    creds = authenticate_user()
+    creds = utilities.authenticate_user()
     service = build("people", "v1", credentials=creds)
 
     # First, get the current state of the contact including its etag
