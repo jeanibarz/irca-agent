@@ -1,109 +1,205 @@
-## src/generation.py
+# Source Code Documentation
 
-`generation.py` is a key module in the IRCA-Agent project, focusing on generating user queries based on a set of available functions. This file includes a class that facilitates the generation of function subsets and user queries using distribution functions and OpenAI's GPT models. Key functionalities of this module are as follows:
+This directory contains the main source code for IRCA-Agent.
 
-### Class: PromptGenerator
-- **Purpose**: To generate random subsets of functions and user queries based on the provided configuration parameters.
-- **Key Methods**:
-  - `generate_random_subset`: Generates a random subset of functions using a specified distribution function, with an option to return the subset in JSON format.
-  - `generate_user_query`: Generates a user query based on the available functions and a specified satisfiability condition using OpenAI's GPT models.
+## Module Overview
 
-#### Details:
-- **Initialization**: Sets default configuration values for the number of functions to sample and distribution parameters, and updates them with any provided configuration.
-- **Distribution Functions**: Supports both uniform and beta distributions for generating function subsets, offering flexibility in sampling.
-- **User Query Generation**: Uses a template and OpenAI's GPT models to generate a user query that corresponds to the available functions.
+```
+src/
+├── __init__.py              # Package root with version
+├── cli/                     # Command-line interface
+├── config/                  # Configuration management
+├── core/                    # Core trace generation
+├── dataset_generation/      # Function schemas
+└── finetuning/              # Model finetuning
+```
 
-### User Query Generation Process:
-1. **Template Formatting**: Formats a prompt template with the available functions and satisfiability condition.
-2. **Query Generation**: Utilizes OpenAI's GPT models to generate a user query based on the formatted prompt.
-3. **Record Creation and Pushing**: Optionally, the module can create and push records to an Argilla dataset for further analysis or training, capturing details like the available functions and the original user query.
+## Modules
 
-This module plays a significant role in the project by automating the generation of user queries, which are essential for training the LLM and testing its capabilities in understanding and responding to various user requests. The flexibility in distribution functions for function sampling also adds diversity to the generated queries.
+### `cli/` - Command Line Interface
 
-## src/guided_generation.py
+Modern CLI built with [Click](https://click.palletsprojects.com/).
 
-`guided_generation.py` is an essential module in the IRCA-Agent project, designed to handle the generation of guided prompts and agent traces for training and testing purposes. This file includes classes and methods that facilitate the creation of dynamic and contextually rich prompts based on a set of specified parameters and distribution functions. Here are the key components:
+```python
+from cli import cli
 
-### Class: GuidedPromptGenerator
-- **Purpose**: To generate guided prompts based on a configurable set of parameters. This class includes methods for random subset generation, prompt generation, and workflow creation.
-- **Key Methods**:
-  - `generate_random_subset`: Generates a random subset of functions using a specified distribution function, supporting JSON format output.
-  - `generate_irca_agent_trace`: Creates a complete IRCA agent trace, including user queries, agent thoughts, function calls, and final answers.
+# Available commands:
+# irca generate traces    - Generate agent traces
+# irca finetune run       - Run model finetuning
+# irca dataset push       - Push to HuggingFace Hub
+```
 
-#### Details:
-- **Model Initialization**: The class initializes a model (either `LlamaCpp` or `Transformers` model) based on the provided configuration, which includes model path, minimum and maximum function counts, distribution parameters, etc.
-- **Distribution Functions**: Supports uniform and beta distributions for sampling functions, allowing for a diverse range of prompt structures.
-- **Workflow Creation**: Generates a detailed workflow that simulates a user query, agent response, and iterative process of function calls and agent thoughts.
+**Files:**
+- `__init__.py` - Main CLI entry point
+- `commands/generate.py` - Trace generation commands
+- `commands/finetune.py` - Model finetuning commands
+- `commands/dataset.py` - Dataset management commands
 
-### Workflow Generation Process:
-1. **User Query Generation**: Utilizes templates and the model to generate a user query based on available functions.
-2. **Agent Thought and Function Calls**: Iteratively generates agent thoughts and function calls to create a detailed trace of the agent's decision-making process.
-3. **Synthetic Function Output Generation**: Includes the generation of synthetic function outputs to simulate realistic agent interactions.
-4. **Final Answer Generation**: Concludes the workflow with the generation of a final answer by the agent.
+### `config/` - Configuration
 
-### Integration with Argilla:
-- **Record Creation and Pushing**: If configured, the module can create and push records to an Argilla dataset for further analysis or training.
+Centralized configuration using [Pydantic Settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
 
-## src/model_training.py
+```python
+from config import get_settings
 
-`model_training.py` is a crucial module in the IRCA-Agent project, dedicated to the fine-tuning and training of the Large Language Model (LLM). This file encompasses various functionalities ranging from model configuration to the actual training process. Below are the key components and their roles:
+settings = get_settings()
+print(settings.models_path)           # /workspace/models
+print(settings.huggingface_token)     # From .env
+config = settings.get_training_config("mistral")
+```
 
-### finetune_model
-- **Purpose**: To fine-tune the LLM based on specific configurations. This function handles everything from loading datasets, setting up model configurations, initializing the tokenizer, to executing the training process.
-- **Use Case**: Central to the model development phase, allowing for tailored training of the LLM to meet the specific needs of the IRCA-Agent project.
+**Files:**
+- `settings.py` - Settings class with model presets and training config
 
-#### Key Steps in finetune_model:
-1. **Model and Tokenizer Initialization**: Loads the base model and tokenizer using configurations for quantization (BitsAndBytesConfig) and parameter-efficient fine-tuning (PEFT) techniques.
-2. **Training Configuration**: Sets up training arguments such as output directory, number of epochs, batch size, learning rate, etc., using the `TrainingArguments` class from the transformers library.
-3. **Dataset Preparation**: Loads and prepares the dataset for training.
-4. **Model Preparation for Training**: Applies PEFT techniques (such as LoRA) to the model and prepares it for training with reduced memory footprint.
-5. **Training Execution**: Utilizes the `SFTTrainer` for the training process, which includes custom formatting functions for the training data.
-6. **Model Saving and Uploading**: After training, the model is saved locally and optionally pushed to the Hugging Face Hub.
+### `core/` - Core Functionality
 
-### Additional Utility Functions
-- **print_trainable_parameters**: Imported from `utils.py`, this function is used to print the number of trainable parameters in the model, providing insights into the model’s complexity.
-- **format_instruction**: Imported from `prompt_builder.py`, this function is used for formatting the training data, ensuring it is in the correct structure for model training.
+Heart of the trace generation system.
 
-## src/prompt_builder.py
+```python
+from core import TraceGenerator, Trace, StepType, create_step
 
-`prompt_builder.py` is a critical module in the IRCA-Agent project that focuses on constructing and formatting prompts for the Large Language Model (LLM). This file contains functions for building prompts, parsing data, and applying various formatting techniques. The key functionalities are as follows:
+# Generate traces
+generator = TraceGenerator(model_name_or_path="mistralai/Mistral-7B-v0.1")
+trace = generator.generate_single_trace(
+    available_functions='[{"name": "get_weather", ...}]',
+    user_query="What's the weather in Paris?",
+)
 
-### build_full_prompt
-- **Purpose**: To construct a comprehensive prompt that includes system instructions, examples, available functions, user queries, and assistant completions.
-- **Use Case**: Essential for creating structured and detailed prompts needed for training or querying the LLM.
+# Work with steps
+step = create_step(
+    step_type=StepType.THOUGHT,
+    thought="I should check the weather",
+    diff="Thought: I should check the weather",
+)
+```
 
-### parse_corrected_agent_trace
-- **Purpose**: To extract and separate different parts of a given full prompt, such as system instructions, examples, available functions, user queries, and assistant completions.
-- **Use Case**: Useful for parsing and analyzing the structure of prompts, which can be critical for both training the model and understanding its responses.
+**Submodules:**
 
-### randomize_newline_characters
-- **Purpose**: To randomize newline characters in a text, choosing between `\n` and `\r\n`.
-- **Use Case**: This function aids in ensuring that the text formatting remains consistent and compatible across different operating systems and platforms.
+- `domain/` - Data models
+  - `steps.py` - Step types (ThoughtStep, FunctionCallStep, etc.)
+  - `trace.py` - Trace model (collection of steps)
 
-### randomize_system_instructions_formatting
-- **Purpose**: To randomly choose and apply different formatting styles to system instructions within a prompt.
-- **Use Case**: Enhances the diversity in prompt presentation, which can be beneficial for training the model to understand and respond to varied text formats.
+- `generation/` - Trace generation
+  - `trace_generator.py` - TraceGenerator class
+  - `step_generators.py` - Individual step functions
+  - `constants.py` - Prompt constants
+  - `argilla.py` - Argilla integration
 
-### format_instruction
-- **Purpose**: To format a given sample by parsing its corrected agent trace and applying randomization in newline characters and system instructions formatting.
-- **Use Case**: Utilized in the preprocessing stage of data for training, ensuring that the LLM is exposed to a variety of prompt formats.
+- `prompt/` - Prompt templates
+  - `function_calling_oneshot.py` - Main prompt template
 
-## src/utils.py
+**Other files:**
+- `prompt_builder.py` - Prompt construction and parsing
+- `utils.py` - Utility functions
+- `step_factory.py` - Backwards compatibility re-exports
+- `trace_generator.py` - Backwards compatibility re-exports
 
-`utils.py` is a utility module in the IRCA-Agent project that provides essential helper functions used across various parts of the project. This file includes functions for text processing, model parameter analysis, and data manipulation. Here's an overview of the key functions and their purposes:
+### `dataset_generation/` - Function Schemas
 
-### extract_and_remove
-- **Purpose**: To extract a specific section from a text prompt based on given start and end markers, and optionally include these markers in the extracted section. It also removes the extracted section from the original prompt.
-- **Use Case**: This function is particularly useful in processing text inputs or outputs where certain parts of the text need to be isolated or removed based on specific markers.
+Function definitions used by the agent.
 
-### print_trainable_parameters
-- **Purpose**: To print the number of trainable parameters in a given model. This includes a breakdown of all parameters versus trainable parameters, along with the percentage of trainable parameters.
-- **Use Case**: Vital for model analysis, especially during the development and fine-tuning stages of the LLM, allowing for a better understanding of the model's complexity and capacity for learning.
+```python
+from dataset_generation.functions_factory import FunctionsFactory
 
-### format_generate_user_query
-- **Purpose**: To format a text prompt for generating potential user queries for an AI assistant, including instructions for creativity and spontaneity in the queries.
-- **Use Case**: Useful in simulating and generating natural user queries for training or testing the AI assistant's response capabilities.
+functions = FunctionsFactory.load_function_variants(version="v1")
+```
 
-### shuffle_json_functions
-- **Purpose**: To shuffle a list of functions (in JSON format) for randomization purposes.
-- **Use Case**: This function can be used in scenarios where a randomized order of functions is necessary, such as in dataset generation or in presenting varied use-case scenarios for the AI assistant.
+**Files:**
+- `functions_factory.py` - Factory for loading function variants
+- `function_variants/` - Different versions of function schemas
+
+### `finetuning/` - Model Finetuning
+
+LoRA/QLoRA finetuning with PEFT and TRL.
+
+```python
+# Run via CLI
+# irca finetune run --model-type mistral --epochs 5
+
+# Or programmatically
+from config import get_settings
+settings = get_settings()
+config = settings.get_training_config("mistral")
+```
+
+**Files:**
+- `model_finetuning.py` - Main finetuning script
+
+## Key Concepts
+
+### Step Types
+
+An agent trace consists of ordered steps:
+
+| Step Type | Description | Key Fields |
+|-----------|-------------|------------|
+| `InitialPromptStep` | Starting prompt | `diff` |
+| `ThoughtStep` | Agent reasoning | `thought`, `diff` |
+| `ActionChoiceStep` | Call function or final answer | `action_choice`, `diff` |
+| `FunctionCallStep` | Function invocation | `fct_name`, `fct_parameters`, `diff` |
+| `FunctionOutputStep` | Function result | `shortuuid`, `function_output`, `diff` |
+| `FinalAnswerStep` | Agent's response | `final_answer`, `diff` |
+
+### Trace
+
+A `Trace` is a container for steps with helpful methods:
+
+```python
+trace = Trace()
+trace.append(step)           # Add a step
+trace.to_string()            # Convert to text
+len(trace)                   # Number of steps
+trace.last_step              # Most recent step
+for step in trace: ...       # Iterate
+```
+
+### Settings
+
+Configuration is loaded from environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `WORKSPACE_DIR` | Base workspace path | `/workspace` |
+| `HUGGINGFACE_TOKEN` | HF Hub access | None |
+| `ARGILLA_API_URL` | Argilla server | None |
+| `LORA_R` | LoRA rank | 128 |
+| `NUM_TRAIN_EPOCHS` | Training epochs | 5 |
+
+See `.env.example` for complete list.
+
+## Import Examples
+
+```python
+# Domain models
+from core.domain import StepType, Trace, ThoughtStep, create_step
+
+# Generation (requires full dependencies)
+from core.generation import TraceGenerator
+
+# Configuration
+from config import Settings, get_settings
+
+# Prompt building
+from core.prompt_builder import build_full_prompt, format_instruction
+
+# Utilities
+from core.utils import shuffle_json_functions, extract_and_remove
+```
+
+## Backwards Compatibility
+
+Old imports continue to work:
+
+```python
+# These still work (re-exported)
+from core.step_factory import create_step_model, StepType
+from core.trace_generator import GuidedTraceGenerator
+```
+
+Prefer new imports for new code:
+
+```python
+# Preferred
+from core.domain import create_step, StepType
+from core.generation import TraceGenerator
+```
