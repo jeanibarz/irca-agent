@@ -1,42 +1,46 @@
-import json
-import random
+"""
+Prompt Builder
 
+Utilities for constructing and manipulating prompts.
+Includes functions for:
+- Building full prompts from components
+- Parsing prompts to extract components
+- Data augmentation through formatting randomization
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import random
+from typing import Any
 
 from core.utils import extract_and_remove
 
-# CHAT TEMPLATE EXAMPLE:
-# <|system|>
-# You are a friendly chatbot who always responds in the style of a pirate</s>
-# <|user|>
-# How many helicopters can a human eat in one sitting?</s>
-# <|assistant|>
-# hearties. None at all.</s>
+logger = logging.getLogger(__name__)
 
 
-def build_full_prompt(sample):
+def build_full_prompt(sample: dict[str, Any]) -> str:
     """
-    Constructs a full prompt string from a sample dictionary.
-
-    This function takes a dictionary containing different parts of a prompt
-    (system instructions, example, available functions, user query, and
-    assistant completion) and combines them into a single formatted string.
+    Construct a full prompt string from components.
 
     Args:
-        sample (dict): A dictionary containing the prompt components.
-                       Expected keys: "system_instructions", "example",
-                       "available_functions_json", "user_query", "assistant_completion".
+        sample: Dictionary with prompt components:
+            - system_instructions: Instructions for the agent
+            - example: Example interaction
+            - available_functions_json: JSON list of functions
+            - user_query: The user's question
+            - assistant_completion: Agent's response
 
     Returns:
-        str: The complete formatted prompt string.
+        Complete formatted prompt string
     """
-    # Extracting parts from the sample
     system_instructions = sample.get("system_instructions", "")
     example = sample.get("example", "")
     available_functions_json = sample.get("available_functions_json", [])
     user_query = sample.get("user_query", "")
     assistant_completion = sample.get("assistant_completion", "")
 
-    # Constructing the full prompt
     full_prompt = f"""
 ### INSTRUCTIONS
 {system_instructions}
@@ -60,23 +64,24 @@ Note: ensure you only use information provided in the context above or below. Do
     return full_prompt
 
 
-def parse_corrected_agent_trace(full_prompt):
+def parse_corrected_agent_trace(full_prompt: str) -> dict[str, str]:
     """
-    Parses a full prompt string to extract its constituent parts.
+    Parse a full prompt string to extract its components.
 
-    This function takes a complete prompt string and uses markers to
-    separate it into system instructions, example, available functions,
-    user query, and assistant completion.
+    Uses markers to separate the prompt into:
+    - system_instructions
+    - example
+    - available_functions_json
+    - user_query
+    - assistant_completion
 
     Args:
-        full_prompt (str): The complete prompt string to parse.
+        full_prompt: Complete prompt string to parse
 
     Returns:
-        dict: A dictionary containing the parsed prompt components.
-              Keys: "system_instructions", "example", "available_functions_json",
-              "user_query", "assistant_completion".
+        Dictionary with parsed components
     """
-    # Extracting and removing parts from the full_prompt
+    # Extract each section using markers
     system_instructions, full_prompt = extract_and_remove(
         start_marker="### INSTRUCTIONS",
         end_marker="EXAMPLE:",
@@ -84,86 +89,83 @@ def parse_corrected_agent_trace(full_prompt):
         include_start_marker=False,
         include_end_marker=False,
     )
+
     example, full_prompt = extract_and_remove(
-        "EXAMPLE:",
-        "<|wait|>",
-        full_prompt,
+        start_marker="EXAMPLE:",
+        end_marker="<|wait|>",
+        full_prompt=full_prompt,
         include_start_marker=False,
         include_end_marker=True,
     )
+
     available_functions_json, full_prompt = extract_and_remove(
-        "### FUNCTIONS AVAILABLE",
-        "\n\n",
-        full_prompt,
-        include_start_marker=False,
-        include_end_marker=False,
-    )
-    user_query, full_prompt = extract_and_remove(
-        "### USER QUERY",
-        "### ITERATIVE RESOLUTION CYCLE",
-        full_prompt,
-        include_start_marker=False,
-        include_end_marker=False,
-    )
-    assistant_completion, full_prompt = extract_and_remove(
-        "### ITERATIVE RESOLUTION CYCLE",
-        None,
-        full_prompt,
+        start_marker="### FUNCTIONS AVAILABLE",
+        end_marker="\n\n",
+        full_prompt=full_prompt,
         include_start_marker=False,
         include_end_marker=False,
     )
 
-    # Update the sample with parsed data
-    parsed_data = {
+    user_query, full_prompt = extract_and_remove(
+        start_marker="### USER QUERY",
+        end_marker="### ITERATIVE RESOLUTION CYCLE",
+        full_prompt=full_prompt,
+        include_start_marker=False,
+        include_end_marker=False,
+    )
+
+    assistant_completion, _ = extract_and_remove(
+        start_marker="### ITERATIVE RESOLUTION CYCLE",
+        end_marker=None,
+        full_prompt=full_prompt,
+        include_start_marker=False,
+        include_end_marker=False,
+    )
+
+    return {
         "system_instructions": system_instructions,
         "example": example,
         "available_functions_json": available_functions_json,
         "user_query": user_query,
         "assistant_completion": assistant_completion,
     }
-    return parsed_data
 
 
-iteration_nbr = 0
-
-
-def randomize_newline_characters(text):
+def randomize_newline_characters(text: str) -> str:
     """
-    Randomizes newline characters in a given text.
+    Randomize newline characters for data augmentation.
 
-    Replaces all newline characters ('\n') with a randomly chosen newline
-    character from ['\n', '\r\n'].
+    Replaces all newlines with either \\n or \\r\\n randomly
+    to improve model robustness to formatting variations.
 
     Args:
-        text (str): The input text to randomize newline characters in.
+        text: Input text
 
     Returns:
-        str: The text with randomized newline characters.
+        Text with randomized newlines
     """
     newline_choice = random.choice(["\n", "\r\n"])
     return text.replace("\n", newline_choice)
 
 
-def randomize_system_instructions_formatting(system_instructions):
+def randomize_system_instructions_formatting(system_instructions: str) -> str:
     """
-    Randomizes the formatting of system instructions.
+    Randomize system instruction formatting for data augmentation.
 
-    This function randomly alters the formatting of system instructions by:
-    1. Optionally replacing specific markers (### INSTRUCTIONS, etc.) with
-       different markers or removing them.
-    2. Adding random newline characters.
+    Randomly alters formatting by:
+    1. Optionally replacing markers with alternatives
+    2. Adding random newline variations
 
     Args:
-        system_instructions (str): The system instructions text to randomize.
+        system_instructions: Original instructions
 
     Returns:
-        str: The system instructions with randomized formatting.
+        Instructions with randomized formatting
     """
     # Randomly choose a formatting style
     format_style = random.choice([1, 2])
 
     if format_style == 2:
-        # Replace markers and add random newlines
         replacements = {
             "### INSTRUCTIONS": "",
             "### FUNCTIONS AVAILABLE": "<|FUNCTIONS AVAILABLE|>",
@@ -173,58 +175,87 @@ def randomize_system_instructions_formatting(system_instructions):
             newline_count = random.choice(["", "\n", "\n\n"])
             system_instructions = system_instructions.replace(old, newline_count + new)
 
-    # Randomize the newline characters in the system instructions
+    # Randomize newline characters
     system_instructions = randomize_newline_characters(system_instructions)
 
     return system_instructions
 
 
-def format_instruction(sample, random_augmentation=True):
+class InstructionFormatter:
     """
-    Formats a sample instruction, potentially with random augmentations.
+    Formats instructions for training with optional augmentation.
 
-    This function takes a sample, extracts the full prompt, parses it,
-    and then applies random augmentations if specified. It then rebuilds
-    the formatted prompt.
+    Tracks iteration count for logging purposes.
+    """
+
+    def __init__(self, random_augmentation: bool = True):
+        """
+        Initialize the formatter.
+
+        Args:
+            random_augmentation: Whether to apply random formatting variations
+        """
+        self.random_augmentation = random_augmentation
+        self.iteration_count = 0
+
+    def format(self, sample: dict[str, Any]) -> str:
+        """
+        Format a sample for training.
+
+        Args:
+            sample: Sample containing 'corrected_agent_trace'
+
+        Returns:
+            Formatted instruction string
+        """
+        self.iteration_count += 1
+        logger.debug(f"Formatting sample {self.iteration_count}")
+
+        full_prompt = sample["corrected_agent_trace"][0]["value"]
+        full_prompt = full_prompt.replace("\r\n", "\n")
+
+        parsed_data = parse_corrected_agent_trace(full_prompt)
+
+        if self.random_augmentation:
+            parsed_data["system_instructions"] = randomize_system_instructions_formatting(
+                parsed_data["system_instructions"]
+            )
+
+        available_functions_json = parsed_data.get("available_functions_json", "")
+        if available_functions_json:
+            available_functions = json.loads(available_functions_json)
+            indent = None
+
+            if self.random_augmentation:
+                random.shuffle(available_functions)
+                indent = random.choice([None, 3, 4])
+
+            parsed_data["available_functions_json"] = [json.dumps(available_functions, indent=indent)]
+
+        return build_full_prompt(parsed_data)
+
+
+# Default formatter instance for backwards compatibility
+_default_formatter = InstructionFormatter(random_augmentation=True)
+
+
+def format_instruction(sample: dict[str, Any], random_augmentation: bool = True) -> str:
+    """
+    Format a sample instruction with optional augmentation.
+
+    This is the main function used during training to format samples.
 
     Args:
-        sample (dict): A dictionary containing the sample data,
-                       including 'corrected_agent_trace'.
-        random_augmentation (bool, optional): Whether to apply random
-                                              augmentations. Defaults to True.
+        sample: Sample containing 'corrected_agent_trace'
+        random_augmentation: Whether to apply random formatting
 
     Returns:
-        str: The formatted instruction string.
+        Formatted instruction string
     """
-    global iteration_nbr
-    print(f"format {iteration_nbr}")
-    iteration_nbr += 1
+    global _default_formatter
 
-    full_prompt = sample["corrected_agent_trace"][0]["value"]
-    full_prompt = full_prompt.replace("\r\n", "\n")
+    # Create new formatter if augmentation setting differs
+    if _default_formatter.random_augmentation != random_augmentation:
+        _default_formatter = InstructionFormatter(random_augmentation=random_augmentation)
 
-    # Split the full prompt into its constituent parts:
-    # system_instructions,
-    # example,
-    # available_functions_json,
-    # user_query,
-    # assistant_completion
-
-    parsed_data = parse_corrected_agent_trace(full_prompt)
-
-    if random_augmentation:
-        # Randomize the system_instructions formatting
-        parsed_data["system_instructions"] = randomize_system_instructions_formatting(
-            parsed_data["system_instructions"]
-        )
-
-    available_functions_json = parsed_data.get("available_functions_json", [])
-    if available_functions_json:
-        available_functions = json.loads(available_functions_json)
-        indent = None
-        if random_augmentation:
-            random.shuffle(available_functions)
-            indent = random.choice([None, 3, 4])
-        parsed_data["available_functions_json"] = [json.dumps(available_functions, indent=indent)]
-    formatted_sample = build_full_prompt(parsed_data)
-    return formatted_sample
+    return _default_formatter.format(sample)

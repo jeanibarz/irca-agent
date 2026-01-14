@@ -1,82 +1,44 @@
-from enum import Enum
-from typing import Type, Dict
-from pydantic import BaseModel
+"""
+Step Factory (Backwards Compatibility)
 
+This module is kept for backwards compatibility.
+New code should import from `core.domain` instead.
 
-# Define an enum for step types
-class StepType(Enum):
-    THOUGHT = "thought"
-    ACTION_CHOICE = "action_choice"
-    FUNCTION_CALL = "function_call"
-    FUNCTION_OUTPUT = "function_output"
-    FINAL_ANSWER = "final_answer"
-    INITIAL_PROMPT = "initial_prompt"
+Example:
+    # Old way (still works)
+    from core.step_factory import create_step_model, StepType
 
+    # New way (preferred)
+    from core.domain import create_step, StepType
+"""
 
-# Define each step type as a Pydantic model
-class ThoughtStep(BaseModel):
-    type: StepType = StepType.THOUGHT
-    thought: str
-    diff: str
+# Re-export everything from the new location
+from core.domain.steps import (
+    STEP_MODEL_MAPPING,
+    ActionChoiceStep,
+    BaseStep,
+    FinalAnswerStep,
+    FunctionCallStep,
+    FunctionOutputStep,
+    InitialPromptStep,
+    Step,
+    StepType,
+    ThoughtStep,
+    create_step,
+    create_step_model,
+)
 
-
-class ActionChoiceStep(BaseModel):
-    type: StepType = StepType.ACTION_CHOICE
-    action_choice: str
-    diff: str
-
-
-class FunctionCallStep(BaseModel):
-    type: StepType = StepType.FUNCTION_CALL
-    fct_name: str
-    fct_parameters: str
-    diff: str
-
-
-class FunctionOutputStep(BaseModel):
-    type: StepType = StepType.FUNCTION_OUTPUT
-    shortuuid: str
-    function_output: str
-    diff: str
-
-
-class FinalAnswerStep(BaseModel):
-    type: StepType = StepType.FINAL_ANSWER
-    final_answer: str
-    diff: str
-
-
-class InitialPromptStep(BaseModel):
-    type: StepType = StepType.INITIAL_PROMPT
-    diff: str
-
-
-# Mapping of step types to their corresponding Pydantic models
-STEP_MODEL_MAPPING: Dict[StepType, Type[BaseModel]] = {
-    StepType.THOUGHT: ThoughtStep,
-    StepType.ACTION_CHOICE: ActionChoiceStep,
-    StepType.FUNCTION_CALL: FunctionCallStep,
-    StepType.FUNCTION_OUTPUT: FunctionOutputStep,
-    StepType.FINAL_ANSWER: FinalAnswerStep,
-    StepType.INITIAL_PROMPT: InitialPromptStep,
-}
-
-
-def create_step_model(step_type: StepType, **kwargs) -> BaseModel:
-    """
-    Factory function to create a step model based on the given step type.
-
-    Args:
-        step_type (StepType): The type of step to create.
-        **kwargs: Additional keyword arguments to pass to the model constructor.
-
-    Returns:
-        BaseModel: An instance of the corresponding step model.
-
-    Raises:
-        ValueError: If an unknown step type is provided.
-    """
-    model = STEP_MODEL_MAPPING.get(step_type)
-    if not model:
-        raise ValueError(f"Unknown step type: {step_type}")
-    return model(**kwargs)
+__all__ = [
+    "StepType",
+    "BaseStep",
+    "ThoughtStep",
+    "ActionChoiceStep",
+    "FunctionCallStep",
+    "FunctionOutputStep",
+    "FinalAnswerStep",
+    "InitialPromptStep",
+    "Step",
+    "STEP_MODEL_MAPPING",
+    "create_step_model",
+    "create_step",
+]

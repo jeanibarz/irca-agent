@@ -1,19 +1,14 @@
 """
-Trace Generator (Backwards Compatibility)
+Generation Module
 
-This module is kept for backwards compatibility.
-New code should import from `core.generation` instead.
-
-Example:
-    # Old way (still works)
-    from core.trace_generator import GuidedTraceGenerator
-
-    # New way (preferred)
-    from core.generation import TraceGenerator
+This module provides trace generation capabilities:
+- TraceGenerator: Main class for generating agent traces
+- Step generators: Functions for generating individual steps
+- Argilla integration: Converting traces to Argilla records
 """
 
-# Re-export everything from the new location
-from core.generation import (
+from .argilla import trace_to_argilla_record
+from .constants import (
     ACTION_CALL_FUNCTION,
     ACTION_CHOICE_PROMPT,
     ACTION_FINAL_ANSWER,
@@ -21,27 +16,31 @@ from core.generation import (
     FINAL_ANSWER_PROMPT,
     FUNCTION_OUTPUT_PROMPT,
     THOUGHT_PROMPT,
-    GuidedTraceGenerator,
-    TraceGenerator,
+)
+from .step_generators import (
     generate_action_choice,
     generate_final_answer,
     generate_function_call,
     generate_function_output,
     generate_thought,
     generate_thought_missing_function,
-    trace_to_argilla_record,
 )
+from .trace_generator import GuidedTraceGenerator, TraceGenerator
 
 __all__ = [
+    # Main generator
     "TraceGenerator",
-    "GuidedTraceGenerator",
+    "GuidedTraceGenerator",  # Backwards compatibility
+    # Step generators
     "generate_thought",
     "generate_thought_missing_function",
     "generate_action_choice",
     "generate_function_call",
     "generate_function_output",
     "generate_final_answer",
+    # Argilla
     "trace_to_argilla_record",
+    # Constants
     "THOUGHT_PROMPT",
     "ACTION_CHOICE_PROMPT",
     "CALL_FUNCTION_PROMPT",
