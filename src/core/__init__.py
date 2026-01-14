@@ -9,7 +9,7 @@ This module contains the core functionality for generating agent traces:
 - `utils`: Utility functions
 """
 
-# Re-export commonly used items
+# Re-export commonly used items from domain (always available)
 from core.domain import (
     ActionChoiceStep,
     BaseStep,
@@ -23,10 +23,20 @@ from core.domain import (
     Trace,
     create_step,
 )
-from core.generation import GuidedTraceGenerator, TraceGenerator
 
 # Backwards compatibility - import from step_factory still works
 from core.step_factory import STEP_MODEL_MAPPING, create_step_model
+
+# Generation modules require additional dependencies (guidance, shortuuid, etc.)
+# Import them lazily to allow basic usage without all deps
+try:
+    from core.generation import GuidedTraceGenerator, TraceGenerator
+
+    _GENERATION_AVAILABLE = True
+except ImportError:
+    TraceGenerator = None
+    GuidedTraceGenerator = None
+    _GENERATION_AVAILABLE = False
 
 __all__ = [
     # Domain models
@@ -41,10 +51,11 @@ __all__ = [
     "InitialPromptStep",
     "Trace",
     "create_step",
-    # Generation
-    "TraceGenerator",
-    "GuidedTraceGenerator",
     # Backwards compatibility
     "create_step_model",
     "STEP_MODEL_MAPPING",
 ]
+
+# Only include generation if available
+if _GENERATION_AVAILABLE:
+    __all__.extend(["TraceGenerator", "GuidedTraceGenerator"])
