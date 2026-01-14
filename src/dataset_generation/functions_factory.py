@@ -1,24 +1,34 @@
+from typing import Any
+
+
 class FunctionsFactory:
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
 
-    def get_available_functions(self):
+    def get_available_functions(self) -> list[dict[str, Any]]:
         version = self.config.get("functions_version", "v1")
         all_functions = FunctionsFactory.load_function_variants(version=version)
         max_funcs = len(all_functions)
         if "max_funcs" in self.config and self.config["max_funcs"] < max_funcs:
-            max_funcs = self.config["max_funcs"]
+            max_funcs = int(self.config["max_funcs"])
         return all_functions[:max_funcs]
 
     @staticmethod
-    def load_function_variants(version):
+    def load_function_variants(version: str) -> list[dict[str, Any]]:
+        # type: ignore[no-redef]
         if version == "v1":
-            from dataset_generation.function_variants.gpt4_functions_v1 import functions
+            from dataset_generation.function_variants.gpt4_functions_v1 import (
+                functions,
+            )
         elif version == "v2":
-            from dataset_generation.function_variants.gpt4_functions_v2 import functions
+            from dataset_generation.function_variants.gpt4_functions_v2 import (
+                functions,
+            )
         elif version == "glaive_v2":
-            from dataset_generation.function_variants.glaive_v2_functions import functions
+            from dataset_generation.function_variants.glaive_v2_functions import (
+                functions,
+            )
         else:
             raise ValueError("Unknown version of available functions requested.")
 
-        return functions
+        return functions  # type: ignore

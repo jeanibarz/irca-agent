@@ -11,11 +11,10 @@ import argparse
 import logging
 import sys
 
-from datasets import load_from_disk
-
 from config import get_settings
 from core.trace_generator import GuidedTraceGenerator
 from core.utils import shuffle_json_functions
+from datasets import load_from_disk
 
 # Configure logging
 logging.basicConfig(
@@ -108,9 +107,7 @@ def main():
             continue
 
         # Shuffle functions to reduce positional bias
-        shuffled_available_functions = shuffle_json_functions(
-            available_functions=available_functions
-        )
+        shuffled_available_functions = shuffle_json_functions(available_functions=available_functions)
 
         # Generate trace
         traces = [
@@ -130,4 +127,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

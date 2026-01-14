@@ -83,10 +83,9 @@ def traces(
         # Use a specific model
         irca generate traces --model mistralai/Mistral-7B-v0.1
     """
-    from datasets import load_from_disk
-
     from core.generation import TraceGenerator
     from core.utils import shuffle_json_functions
+    from datasets import load_from_disk  # type: ignore
 
     settings = get_settings()
     verbose = ctx.obj.get("verbose", False)
@@ -120,7 +119,7 @@ def traces(
         sys.exit(1)
 
     # Initialize trace generator
-    click.echo(f"Initializing trace generator...")
+    click.echo("Initializing trace generator...")
     try:
         trace_generator = TraceGenerator(model_name_or_path=model_path)
     except Exception as e:
@@ -156,11 +155,13 @@ def traces(
                 available_functions=shuffled_functions,
                 user_query=user_query,
             )
-            generated_traces.append({
-                "index": i,
-                "user_query": user_query,
-                "trace": trace.to_string(),
-            })
+            generated_traces.append(
+                {
+                    "index": i,
+                    "user_query": user_query,
+                    "trace": trace.to_string(),
+                }
+            )
 
     click.echo(f"\n✅ Generated {len(generated_traces)} traces")
 

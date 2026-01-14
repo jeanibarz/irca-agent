@@ -4,8 +4,6 @@ Tests for Generation Constants
 Tests the constants defined in core.generation.constants
 """
 
-import pytest
-
 from core.generation.constants import (
     ACTION_CALL_FUNCTION,
     ACTION_CHOICE_PROMPT,

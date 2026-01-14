@@ -1,10 +1,8 @@
 import json
 import os
 
-from dotenv import load_dotenv
-
 import argilla as rg
-
+from dotenv import load_dotenv
 from guided_generation_gpt4 import GuidedPromptGenerator
 
 load_dotenv()
@@ -58,9 +56,7 @@ def main():
         print("Selected functions:", available_functions_dict)
         print("Number of selected functions:", len(available_functions_dict))
 
-        prompt_generator.generate_user_query(
-            available_functions=available_functions_json
-        )
+        prompt_generator.generate_user_query(available_functions=available_functions_json)
 
 
 if __name__ == "__main__":

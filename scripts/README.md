@@ -72,7 +72,7 @@ poetry run python scripts/main_generator.py
 All scripts and CLI commands use environment variables from `.env` file:
 
 - `HUGGINGFACE_TOKEN` - For HuggingFace Hub access
-- `ARGILLA_API_URL` - Argilla server URL  
+- `ARGILLA_API_URL` - Argilla server URL
 - `ARGILLA_API_KEY` - Argilla API key
 
 See `.env.example` for all available options.

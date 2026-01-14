@@ -7,7 +7,7 @@ Utilities for converting traces to Argilla records for human annotation.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from core.domain import Trace
@@ -19,7 +19,7 @@ def trace_to_argilla_record(
     available_functions: str,
     user_query: str,
     trace: Trace,
-):
+) -> Any:
     """
     Convert a trace to an Argilla FeedbackRecord.
 

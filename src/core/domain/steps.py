@@ -11,7 +11,7 @@ Defines the step types that make up an agent trace:
 """
 
 from enum import Enum
-from typing import Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -78,14 +78,7 @@ class InitialPromptStep(BaseStep):
 
 
 # Type alias for any step
-Step = Union[
-    ThoughtStep,
-    ActionChoiceStep,
-    FunctionCallStep,
-    FunctionOutputStep,
-    FinalAnswerStep,
-    InitialPromptStep,
-]
+Step = ThoughtStep | ActionChoiceStep | FunctionCallStep | FunctionOutputStep | FinalAnswerStep | InitialPromptStep
 
 # Mapping of step types to their models
 STEP_MODEL_MAPPING: dict[StepType, type[BaseStep]] = {
@@ -98,7 +91,7 @@ STEP_MODEL_MAPPING: dict[StepType, type[BaseStep]] = {
 }
 
 
-def create_step(step_type: StepType, **kwargs) -> BaseStep:
+def create_step(step_type: StepType, **kwargs: Any) -> BaseStep:
     """
     Factory function to create a step model.
 

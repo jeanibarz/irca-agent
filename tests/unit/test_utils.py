@@ -6,8 +6,6 @@ Tests the utility functions in core.utils
 
 import json
 
-import pytest
-
 from core.utils import (
     extract_and_remove,
     format_generate_user_query,

@@ -37,4 +37,3 @@ COPY pyproject.toml ./
 RUN poetry install --no-root --only main || true
 
 CMD ["/bin/bash"]
-

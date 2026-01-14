@@ -1,6 +1,4 @@
 import os
-from datetime import datetime
-import json
 
 import argilla as rg
 from dotenv import load_dotenv
@@ -67,6 +65,7 @@ def create_and_push_user_query_dataset(name, workspace=DEFAULT_WORKSPACE):
 
 def generate_completion(available_functions, user_query, agent_scratchpad):
     from openai import OpenAI
+
     from core.prompt.function_calling_oneshot import prompt_template
 
     client = OpenAI()

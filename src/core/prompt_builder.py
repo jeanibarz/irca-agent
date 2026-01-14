@@ -135,7 +135,7 @@ def randomize_newline_characters(text: str) -> str:
     """
     Randomize newline characters for data augmentation.
 
-    Replaces all newlines with either \\n or \\r\\n randomly
+    Replaces all newlines with either \n or \r\n randomly
     to improve model robustness to formatting variations.
 
     Args:
@@ -230,7 +230,7 @@ class InstructionFormatter:
                 random.shuffle(available_functions)
                 indent = random.choice([None, 3, 4])
 
-            parsed_data["available_functions_json"] = [json.dumps(available_functions, indent=indent)]
+            parsed_data["available_functions_json"] = json.dumps(available_functions, indent=indent)
 
         return build_full_prompt(parsed_data)
 

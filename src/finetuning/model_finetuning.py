@@ -10,14 +10,15 @@ Usage:
 import argparse
 import logging
 import sys
+from typing import Any
 
-import datasets
 import huggingface_hub
 import peft
 import torch
 import transformers
 import trl
 
+import datasets  # type: ignore
 from config import get_settings
 from core import prompt_builder, utils
 
@@ -33,7 +34,7 @@ def setup_logging(level: int = logging.DEBUG) -> logging.Logger:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     logger.setLevel(level)
-    datasets.utils.logging.set_verbosity(level)
+    datasets.utils.logging.set_verbosity(level)  # type: ignore
     transformers.utils.logging.set_verbosity(level)
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
@@ -66,10 +67,10 @@ def setup_peft_config(config: dict) -> peft.LoraConfig:
 
 
 def load_and_prepare_model(
-    config: dict,
+    config: dict[str, Any],
     peft_config: peft.LoraConfig,
-    settings=None,
-) -> tuple:
+    settings: Any | None = None,
+) -> tuple[Any, Any]:
     """
     Load model and tokenizer, apply quantization and LoRA.
 
@@ -120,10 +121,10 @@ def load_and_prepare_model(
 
 
 def setup_trainer(
-    model,
-    tokenizer,
-    dataset,
-    config: dict,
+    model: Any,
+    tokenizer: Any,
+    dataset: Any,
+    config: dict[str, Any],
     peft_config: peft.LoraConfig | None = None,
 ) -> trl.SFTTrainer:
     """
@@ -202,7 +203,7 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Main training function."""
     setup_logging()
     logger.info("Starting IRCA-Agent model fine-tuning")
@@ -243,7 +244,7 @@ def main():
     # Load dataset
     logger.info(f"Loading dataset: {config['dataset']}")
     try:
-        dataset = datasets.load_dataset(config["dataset"])
+        dataset = datasets.load_dataset(config["dataset"])  # type: ignore
         logger.info(f"Dataset loaded: {len(dataset['train'])} training examples")
     except Exception as e:
         logger.critical(f"Failed to load dataset: {e}")
@@ -275,4 +276,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

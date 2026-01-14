@@ -7,7 +7,7 @@ Use `get_settings()` to get a cached singleton instance.
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -172,7 +172,7 @@ class Settings(BaseSettings):
     # ===========================================
     # Model Configurations
     # ===========================================
-    def get_model_config(self, model_type: str | None = None) -> dict:
+    def get_model_config(self, model_type: str | None = None) -> dict[str, str]:
         """
         Get configuration for a specific model type.
 
@@ -206,14 +206,11 @@ class Settings(BaseSettings):
         }
 
         if model_type not in presets:
-            raise ValueError(
-                f"Unknown model type: {model_type}. "
-                f"Available: {list(presets.keys())}"
-            )
+            raise ValueError(f"Unknown model type: {model_type}. Available: {list(presets.keys())}")
 
         return presets[model_type]
 
-    def get_training_config(self, model_type: str | None = None) -> dict:
+    def get_training_config(self, model_type: str | None = None) -> dict[str, Any]:
         """
         Get complete training configuration.
 
@@ -246,7 +243,7 @@ class Settings(BaseSettings):
 
     @field_validator("workspace_dir", "models_dir", "datasets_dir", "finetuned_models_dir", mode="before")
     @classmethod
-    def validate_path(cls, v):
+    def validate_path(cls, v: Any) -> Any:
         """Convert string paths to Path objects."""
         if isinstance(v, str):
             return Path(v)

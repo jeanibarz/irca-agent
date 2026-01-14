@@ -1,6 +1,4 @@
 import os
-from datetime import datetime
-import json
 
 import argilla as rg
 from dotenv import load_dotenv
@@ -18,9 +16,7 @@ config = dict(
     name="irca_agent_dataset_v5-3acc",
     workspace="irca_agent",
 )
-ds = rg.FeedbackDataset.from_argilla(
-    name=config["name"], workspace=config["workspace"]
-).pull()
+ds = rg.FeedbackDataset.from_argilla(name=config["name"], workspace=config["workspace"]).pull()
 
 # Remove non filtered records
 records_to_remove = []

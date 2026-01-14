@@ -1,6 +1,4 @@
 import os
-from datetime import datetime
-import json
 
 import argilla as rg
 from dotenv import load_dotenv
@@ -14,12 +12,8 @@ rg.init(
 )
 
 # Create a local copy of the data (don't remove the .pull() /!\)
-ds1 = rg.FeedbackDataset.from_argilla(
-    name="irca_agent_dataset_v5-2acc", workspace="irca_agent"
-).pull()
-ds2 = rg.FeedbackDataset.from_argilla(
-    name="irca_agent_dataset_v5-3", workspace="irca_agent"
-).pull()
+ds1 = rg.FeedbackDataset.from_argilla(name="irca_agent_dataset_v5-2acc", workspace="irca_agent").pull()
+ds2 = rg.FeedbackDataset.from_argilla(name="irca_agent_dataset_v5-3", workspace="irca_agent").pull()
 # ds3 = rg.FeedbackDataset.from_argilla(
 #     name="irca_agent_dataset_v4-4", workspace="irca_agent"
 # ).pull()
@@ -30,18 +24,14 @@ for record in ds1.records + ds2.records:
     if not record.responses or record.responses[0].status != "submitted":
         continue
     try:
-        available_functions = (
-            record.fields["available_functions"].replace("\r", "").strip("\n")
-        )
+        available_functions = record.fields["available_functions"].replace("\r", "").strip("\n")
         user_query = record.fields["user_query"].replace("\r", "").strip("\n")
         # user_query = record.responses[0].values["corrected_user_query"].value
         try:
             agent_trace = record.responses[0].values["corrected_agent_trace"].value
         except KeyError:
             try:
-                agent_trace = (
-                    record.responses[0].values["corrected_irca_agent_trace"].value
-                )
+                agent_trace = record.responses[0].values["corrected_irca_agent_trace"].value
             except KeyError:
                 agent_trace = record.responses[0].values["corrected_user_trace"].value
         agent_trace = agent_trace.replace("\r", "").strip("\n")
@@ -66,7 +56,5 @@ for record in ds1.records + ds2.records:
         print("skipping")
         pass
 
-new_ds = rg.FeedbackDataset.from_argilla(
-    name="irca_agent_dataset_v5-3acc", workspace="irca_agent"
-)
+new_ds = rg.FeedbackDataset.from_argilla(name="irca_agent_dataset_v5-3acc", workspace="irca_agent")
 new_ds.add_records(new_records)

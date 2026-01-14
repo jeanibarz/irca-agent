@@ -81,7 +81,7 @@ with user():
     lm += """What is the capital of Sweden? Answer with the correct letter.
 
     A) Helsinki
-    B) Reykjavík 
+    B) Reykjavík
     C) Stockholm
     D) Oslo
     """
@@ -177,7 +177,7 @@ Guidance functions can be composed, in order to construct a full context free gr
 
 @guidance(stateless=True)
 def _gen_text(lm: Model):
-    return lm + gen(regex="[^<>]+") 
+    return lm + gen(regex="[^<>]+")
 We can then use this function to generate text within an arbitrary HTML tag:
 
 @guidance(stateless=True)

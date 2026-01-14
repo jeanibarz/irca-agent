@@ -131,7 +131,6 @@ The weather in Paris is 20 degrees and sunny.<|wait|>
 @pytest.fixture
 def mock_settings():
     """Mock Settings object."""
-    from unittest.mock import MagicMock
     from pathlib import Path
 
     settings = MagicMock()

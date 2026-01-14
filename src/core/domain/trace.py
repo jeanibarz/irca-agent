@@ -4,7 +4,7 @@ Trace Models
 A Trace represents a complete agent interaction consisting of multiple steps.
 """
 
-from typing import Sequence
+from collections.abc import Iterator
 
 from pydantic import BaseModel, Field
 
@@ -35,7 +35,7 @@ class Trace(BaseModel):
     def __getitem__(self, index: int) -> Step:
         return self.steps[index]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Step]:  # type: ignore[override]
         return iter(self.steps)
 
     @property

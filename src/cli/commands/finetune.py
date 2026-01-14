@@ -79,13 +79,13 @@ def run(
         # Finetune and push to HuggingFace Hub
         irca finetune run --push-to-hub
     """
-    import datasets
     import huggingface_hub
     import peft
     import torch
     import transformers
     import trl
 
+    import datasets  # type: ignore
     from core import prompt_builder, utils
 
     settings = get_settings()
@@ -97,10 +97,10 @@ def run(
         level=log_level,
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     )
-    datasets.utils.logging.set_verbosity(log_level)
+    datasets.utils.logging.set_verbosity(log_level)  # type: ignore
     transformers.utils.logging.set_verbosity(log_level)
 
-    click.echo(f"🚀 Starting IRCA-Agent finetuning")
+    click.echo("🚀 Starting IRCA-Agent finetuning")
     click.echo(f"   Model type: {model_type}")
 
     # Get training configuration
@@ -134,8 +134,14 @@ def run(
         r=config["lora_r"],
         lora_alpha=config["lora_alpha"],
         target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj", "lm_head",
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+            "lm_head",
         ],
         bias="none",
         lora_dropout=config["lora_dropout"],
@@ -178,7 +184,7 @@ def run(
     # Load dataset
     click.echo(f"\n📊 Loading dataset: {config['dataset']}")
     try:
-        train_dataset = datasets.load_dataset(config["dataset"])
+        train_dataset = datasets.load_dataset(config["dataset"])  # type: ignore
         click.echo(f"✓ Dataset loaded: {len(train_dataset['train'])} examples")
     except Exception as e:
         click.secho(f"Error loading dataset: {e}", fg="red", err=True)

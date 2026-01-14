@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
 
 import torch
 from guidance import models
@@ -36,11 +36,9 @@ logger = logging.getLogger(__name__)
 class LanguageModel(Protocol):
     """Protocol for language model interface."""
 
-    def __add__(self, other) -> "LanguageModel":
-        ...
+    def __add__(self, other: str) -> LanguageModel: ...
 
-    def __getitem__(self, key: str) -> str:
-        ...
+    def __getitem__(self, key: str) -> str: ...
 
 
 class TraceGenerator:
@@ -58,7 +56,7 @@ class TraceGenerator:
         self,
         model_name_or_path: str | None = None,
         model: LanguageModel | None = None,
-        torch_dtype=None,
+        torch_dtype: torch.dtype | None = None,
         device_map: dict | None = None,
     ):
         """
@@ -86,15 +84,18 @@ class TraceGenerator:
     def _load_model(
         self,
         model_name_or_path: str,
-        torch_dtype,
-        device_map: dict,
+        torch_dtype: torch.dtype,
+        device_map: dict | str,
     ) -> LanguageModel:
         """Load the language model."""
         logger.info(f"Loading model: {model_name_or_path}")
-        return models.Transformers(
-            model=model_name_or_path,
-            torch_dtype=torch_dtype,
-            device_map=device_map,
+        return cast(
+            LanguageModel,
+            models.Transformers(
+                model=model_name_or_path,
+                torch_dtype=torch_dtype,
+                device_map=device_map,
+            ),
         )
 
     def _generate_initial_prompt(
@@ -305,7 +306,7 @@ class TraceGenerator:
 
     def trace_to_string(self, trace: Trace) -> str:
         """Convert a trace to a string representation."""
-        return trace.to_string()
+        return str(trace.to_string())
 
 
 # Backwards compatibility alias

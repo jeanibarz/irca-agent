@@ -139,7 +139,7 @@ def pull(
     """
     from pathlib import Path
 
-    from datasets import load_dataset
+    from datasets import load_dataset  # type: ignore
 
     settings = get_settings()
     verbose = ctx.obj.get("verbose", False)
@@ -260,7 +260,7 @@ def combine(
     try:
         import argilla as rg
 
-        click.echo(f"Connecting to Argilla...")
+        click.echo("Connecting to Argilla...")
         rg.init(
             api_url=settings.argilla_api_url,
             api_key=settings.argilla_api_key,

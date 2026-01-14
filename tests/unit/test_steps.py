@@ -190,9 +190,7 @@ class TestTrace:
         """Trace converts to string by concatenating diffs."""
         trace = Trace()
         trace.append(ThoughtStep(thought="Test 1", diff="Thought: Test 1"))
-        trace.append(
-            ActionChoiceStep(action_choice="final answer", diff="\nAction choice: final answer")
-        )
+        trace.append(ActionChoiceStep(action_choice="final answer", diff="\nAction choice: final answer"))
         result = trace.to_string()
         assert result == "Thought: Test 1\nAction choice: final answer"
 

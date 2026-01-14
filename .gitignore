@@ -68,3 +68,13 @@ inhuman-*/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+
+# Coverage reports
+.coverage
+htmlcov/
+coverage.xml
+
+# Assistant memory files
+CLAUDE.md
+MEMORY.md
+EXPERIENCES.md

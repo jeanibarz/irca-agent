@@ -79,11 +79,7 @@ def print_trainable_parameters(model: Any) -> None:
     all_params = sum(p.numel() for p in model.parameters())
     percentage = 100 * trainable_params / all_params if all_params > 0 else 0
 
-    print(
-        f"trainable params: {trainable_params:,} || "
-        f"all params: {all_params:,} || "
-        f"trainable%: {percentage:.2f}"
-    )
+    print(f"trainable params: {trainable_params:,} || all params: {all_params:,} || trainable%: {percentage:.2f}")
 
 
 def format_generate_user_query(

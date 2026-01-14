@@ -4,10 +4,6 @@ Tests for Prompt Builder
 Tests the prompt building and parsing functions in core.prompt_builder
 """
 
-import json
-
-import pytest
-
 from core.prompt_builder import (
     InstructionFormatter,
     build_full_prompt,

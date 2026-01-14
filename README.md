@@ -11,7 +11,7 @@ IRCA-Agent (Iterative Resolution Cycle Agent) is a toolkit for generating high-q
 ## ✨ Features
 
 - **Guided Trace Generation**: Generate complete agent traces with thoughts, function calls, and final answers using [Microsoft Guidance](https://github.com/guidance-ai/guidance)
-- **Data Augmentation**: 
+- **Data Augmentation**:
   - Function removal to train models to acknowledge limitations
   - Prompt style randomization to improve generalization
   - Function order shuffling to reduce positional bias
