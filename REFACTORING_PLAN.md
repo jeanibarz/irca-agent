@@ -86,7 +86,7 @@ irca-agent/
 
 ## Phased Refactoring Plan
 
-### Phase 0: Pre-Refactoring Setup ✅
+### Phase 0: Pre-Refactoring Setup ✅ COMPLETE
 **Goal:** Establish a baseline and development environment  
 **Time Estimate:** 1-2 hours  
 **Risk:** Low
@@ -95,7 +95,7 @@ irca-agent/
 - [x] Create cleanup branch
 - [x] Remove irrelevant files
 - [x] Update .gitignore
-- [ ] **Commit current cleanup state**
+- [x] **Commit current cleanup state**
 
 ```bash
 git add -A
@@ -104,14 +104,14 @@ git commit -m "chore: cleanup irrelevant files and update .gitignore"
 
 ---
 
-### Phase 1: Dependency Modernization
+### Phase 1: Dependency Modernization ✅ COMPLETE
 **Goal:** Unify and update dependencies  
 **Time Estimate:** 2-4 hours  
 **Risk:** Medium (may break compatibility)
 
 #### 1.1 Consolidate to Poetry
-- [ ] Remove `requirements.txt` (keep `pyproject.toml` only)
-- [ ] Add missing dependencies to `pyproject.toml`:
+- [x] Remove `requirements.txt` (keep `pyproject.toml` only)
+- [x] Add missing dependencies to `pyproject.toml`:
   ```toml
   argilla = "^1.x"
   shortuuid = "^1.x"
@@ -128,27 +128,27 @@ git commit -m "chore: cleanup irrelevant files and update .gitignore"
   ```
 
 #### 1.2 Update Outdated Packages
-- [ ] Check for breaking changes in:
-  - `trl` (0.4.7 → latest)
-  - `transformers` (update to match CUDA/torch)
-  - `argilla` (API may have changed)
-  - `guidance` (check if still maintained)
-- [ ] Test finetuning pipeline after updates
+- [x] Check for breaking changes in:
+  - `trl` (0.4.7 → 0.13.0)
+  - `transformers` (→ 4.47.0)
+  - `argilla` (→ 2.8.0)
+  - `guidance` (→ 0.2.0)
+- [ ] Test finetuning pipeline after updates (deferred to validation)
 
 #### 1.3 Update DevContainer
-- [ ] Update Dockerfile with new dependencies
-- [ ] Ensure proper CUDA support
-- [ ] Test container build
+- [x] Update Dockerfile with Poetry
+- [x] Update post-create script
+- [x] Update devcontainer.json
 
 ---
 
-### Phase 2: Configuration Refactoring
+### Phase 2: Configuration Refactoring ✅ COMPLETE
 **Goal:** Centralize and externalize configuration  
 **Time Estimate:** 2-3 hours  
 **Risk:** Low
 
 #### 2.1 Create Unified Config System
-- [ ] Create `src/config/` module:
+- [x] Create `src/config/` module:
   ```python
   # src/config/__init__.py
   from .settings import Settings
@@ -182,14 +182,14 @@ git commit -m "chore: cleanup irrelevant files and update .gitignore"
   ```
 
 #### 2.2 Remove Hardcoded Paths
-- [ ] Replace all `/workspace/` paths with config-based paths
-- [ ] Use `Path` objects instead of string concatenation
-- [ ] Support both local and container environments
+- [x] Replace all `/workspace/` paths with config-based paths
+- [x] Use `Path` objects instead of string concatenation
+- [x] Support both local and container environments
 
 #### 2.3 Consolidate Training Config
-- [ ] Remove duplicate `scripts/config.py`
-- [ ] Merge `src/defaults/v1/training_args.py` into `Settings`
-- [ ] Use model registry pattern for model configs
+- [x] Remove duplicate `scripts/config.py`
+- [x] Merge `src/defaults/v1/training_args.py` into `Settings`
+- [x] Use model registry pattern for model configs
 
 ---
 
