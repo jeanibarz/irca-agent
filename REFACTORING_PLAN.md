@@ -264,35 +264,27 @@ irca dataset push --source dataset_name --target user/repo
 
 ---
 
-### Phase 5: Testing Infrastructure
+### Phase 5: Testing Infrastructure ✅ COMPLETE
 **Goal:** Add test coverage  
 **Time Estimate:** 4-6 hours  
 **Risk:** Low
 
 #### 5.1 Setup Testing Framework
-```toml
-# pyproject.toml additions
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-addopts = "-v --cov=src --cov-report=term-missing"
-
-[tool.coverage.run]
-branch = true
-source = ["src"]
-```
+- [x] pytest configuration in pyproject.toml
+- [x] conftest.py with shared fixtures
+- [x] Unit and integration test directories
 
 #### 5.2 Add Unit Tests
-Priority order:
-1. `step_factory.py` - Already clean, easy to test
-2. `utils.py` - Pure functions, easy to test
-3. `prompt_builder.py` - Text manipulation, testable
-4. `functions_factory.py` - Factory pattern, testable
+- [x] `test_steps.py` - Step models, Trace, create_step factory
+- [x] `test_utils.py` - extract_and_remove, shuffle_json_functions
+- [x] `test_prompt_builder.py` - build_full_prompt, format_instruction
+- [x] `test_settings.py` - Settings, get_model_config, get_training_config
+- [x] `test_constants.py` - Generation constants
 
 #### 5.3 Add Integration Tests
-- [ ] Test trace generation with mocked model
-- [ ] Test dataset loading/saving
-- [ ] Test configuration loading
+- [ ] Test trace generation with mocked model (deferred)
+- [ ] Test dataset loading/saving (deferred)
+- [x] Test configuration loading
 
 ---
 
