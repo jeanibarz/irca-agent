@@ -1,16 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific - Temporary/Output
 testrun/
 output/
-venv/
 temp/
+
+# Robocorp
 .rpa/
-.idea/
+
+# Jupyter
 .ipynb_checkpoints/
 .virtual_documents/
 */.ipynb_checkpoints/*
-.vscode
-.DS_Store
-*.pyc
-*.zip
+
+# Environment
 **/.env
-*.pyc
-models
+.env
+
+# Archives
+*.zip
+*.tar.gz
+
+# Models and large files (use LFS or external storage)
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# Datasets (stored separately)
+datasets/
+
+# Weights & Biases logs
+wandb/
+
+# External repos (should be submodules or dependencies)
+lm-evaluation-harness/
+llama.cpp/
+opengpts/
+count_letters/
+inhuman-*/
+
+# Cache
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

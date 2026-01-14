@@ -1,0 +1,2 @@
+# Starling: huggingface-cli download TheBloke/Starling-LM-7B-alpha-GGUF starling-lm-7b-alpha.Q5_K_M.gguf --local-dir /workspace/models/hub/Starling-LM-7B-alpha-GGUF --local-dir-use-symlinks False
+# Tinyllama: huggingface-cli download TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf --local-dir /workspace/models/hub/TinyLlama-1.1B-Chat-v1.0-GGUF --local-dir-use-symlinks False

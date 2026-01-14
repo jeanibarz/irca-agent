@@ -1,104 +1,282 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Train Mistral",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "args": [
-                "--model_type", "mistral"
-            ],
-            "justMyCode": true
-        },
-        {
-            "name": "Train TinyLlama",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "args": [
-                "--model_type", "tinyllama"
-            ],
-            "justMyCode": true
-        },
-        {
-            "name": "Train Eagle",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "args": [
-                "--model_type", "eagle"
-            ],
-            "justMyCode": true
-        },
-        {
-            "name": "Train Snorkel",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "args": [
-                "--model_type", "snorkel"
-            ],
-            "justMyCode": true
-        },
-        {
-            "name": "Train Qwen1.5-4B",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "args": [
-                "--model_type", "qwen1.5-4b"
-            ],
-            "justMyCode": true
-        },
-        {
-            "name": "Train Qwen1.5-14B",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "args": [
-                "--model_type", "qwen1.5-14b"
-            ],
-            "justMyCode": true
-        },
-        {
-            "name": "Train MiniCPM-2B-sft",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "args": [
-                "--model_type", "minicpm-2b-sft"
-            ],
-            "justMyCode": true
-        },
-        {
-            "name": "Model Evaluation",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "args": [
-                "--model_type", "eval"
-            ],
-            "justMyCode": true
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Generate Raw Counting Problems",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/count_letters_in_word/generate_raw_counting_problems.py",
+      "args": [
+        "--total_generations",
+        "100_000",
+        "--min_length",
+        "500",
+        "--max_length",
+        "1000",
+        "--dataset_name",
+        "JeanIbarz/count_letters_raw_problems",
+        "--concatenate",
+        "--upload_to_hub"
+      ],
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Python: Generate Varied Problems Dataset",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/count_letters_in_word/generate_varied_dataset.py",
+      "args": [
+        "--num_problems",
+        "1_000_000",
+        "--base_dataset",
+        "JeanIbarz/count_letters_in_word_base",
+        "--prompt_variations_dataset",
+        "JeanIbarz/count_letters_prompt_variations",
+        "--answer_variations_dataset",
+        "JeanIbarz/count_letters_answer_variations",
+        "--dataset_name",
+        "JeanIbarz/count_letters_in_word_varied",
+        "--upload_to_hub"
+      ],
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Python: Generate Varied Problems Dataset from Raw Problems",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/count_letters_in_word/generate_varied_dataset_from_raw_problems.py",
+      "args": [
+        "--num_problems",
+        "800_000",
+        "--base_dataset",
+        "JeanIbarz/count_letters_raw_problems",
+        "--prompt_variations_dataset",
+        "JeanIbarz/count_letters_prompt_variations",
+        "--answer_variations_dataset",
+        "JeanIbarz/count_letters_answer_variations",
+        "--dataset_name",
+        "JeanIbarz/count_letters_in_random_string_varied",
+        "--upload_to_hub"
+      ],
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Train Counting Words",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/counting_words/finetune_model.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": [
+        "--dataset",
+        "JeanIbarz/count_letters_in_word",
+        "--base_model",
+        "meta-llama/Meta-Llama-3-8B",
+        "--model_name",
+        "JeanIbarz/OrpoLlama-3-8B_counting_words.gguf",
+        "--auth_token",
+        "${env:HF_AUTH_TOKEN}"
+      ],
+      "justMyCode": true
+    },
+    {
+      "name": "Train Counting Tokens",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/count_letters/src/finetune_model.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--base_dataset",
+        "/mnt/d/wsl_data/tokens.db",
+        "--prompt_variations_dataset",
+        "JeanIbarz/count_letters_prompt_variations",
+        "--answer_variations_dataset",
+        "JeanIbarz/count_letters_answer_variations",
+        // "--base_model", "Qwen/Qwen2.5-14B-Instruct",
+        "--base_model",
+        // "mistralai/Mistral-7B-Instruct-v0.3",
+        // "/workspace/models/finetuned_models/JeanIbarz/OrpoMistral-7B-Instruct-v0.3-CountLettersInTokensWithVariations-v4.0.3/checkpoint-5000",
+        "meta-llama/Llama-3.2-1B",
+        "--existing_peft_model",
+        "/workspace/models/finetuned_models/JeanIbarz/OrpoLlama-3.2-1B-CountLettersInTokensWithVariations-v5.0-2/checkpoint-15165",
+        "--model_name",
+        // "JeanIbarz/OrpoMistral-7B-Instruct-v0.3-CountLettersInTokensWithVariations-v5.0-1",
+        "JeanIbarz/OrpoLlama-3.2-1B-CountLettersInTokensWithVariations-v5.0-3",
+        // "--model_name", "JeanIbarz/OrpoLlama-3.2-1B-CountLettersInRandomString-v3.2",
+        // "--model_name", "JeanIbarz/OrpoLlamaMistral-7B-Instruct-v0.3-CountLettersInRandomString-v3.1",
+        // "--resume_from_checkpoint",
+        "--num_train_epochs",
+        "1",
+        "--learning_rate",
+        "0.000_01",
+        "--lora_r",
+        "8",
+        "--lora_alpha",
+        "16",
+        "--batch_size",
+        "4",
+        "--max_combine",
+        "5",
+        "--prompt_replacement_prob_begin",
+        "1.0",
+        "--prompt_replacement_prob_end",
+        "1.0",
+        "--answer_replacement_prob_begin",
+        "1.0",
+        "--answer_replacement_prob_end",
+        "1.0",
+        "--invariant_transform_prob_begin",
+        "1.0",
+        "--invariant_transform_prob_end",
+        "1.0"
+      ],
+      "cwd": "${workspaceFolder}/scripts/count_letters_in_word",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "Generata dataset completions",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/count_letters/src/generate_dataset_completions.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--db_path",
+        "/mnt/d/wsl_data/count_letters_in_word_varied.db",
+        "--checkpoint_path",
+        "/workspace/models/finetuned_models/JeanIbarz/OrpoMistral-7B-Instruct-v0.3-CountLettersInRandomString-v3.2/checkpoint-5000",
+        "--num_samples",
+        "10"
+      ],
+      "cwd": "${workspaceFolder}/count_letters/src",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "Train Counting Words V2 (2k samples)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/count_letters_in_word/finetune_model2/finetune_model2.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--word_dataset",
+        "JeanIbarz/count_letters_in_word_varied",
+        "--random_string_dataset",
+        "/mnt/d/wsl_data/count_letters_in_random_string_varied.db",
+        "--base_model",
+        "meta-llama/Llama-3.2-1B",
+        "--model_name",
+        "JeanIbarz/OrpoLlama-3.2-1B-CountLettersInWord-v2.0",
+        // "--resume_from_checkpoint",
+        "--batch_size",
+        "4",
+        "--learning_rate",
+        "0.000_01",
+        "--word_ratio",
+        "0.5",
+        "--count_lower_bound",
+        "1",
+        "--count_upper_bound",
+        "10",
+        "--num_train_samples",
+        "200000",
+        "--max_total_samples",
+        "1000000",
+        "--subset_size",
+        "160"
+      ],
+      "cwd": "${workspaceFolder}/scripts/count_letters_in_word",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "Train Mistral",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--model_type", "mistral"],
+      "justMyCode": true
+    },
+    {
+      "name": "Train TinyLlama",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--model_type", "tinyllama"],
+      "justMyCode": true
+    },
+    {
+      "name": "Train Eagle",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--model_type", "eagle"],
+      "justMyCode": true
+    },
+    {
+      "name": "Train Snorkel",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--model_type", "snorkel"],
+      "justMyCode": true
+    },
+    {
+      "name": "Train Qwen1.5-4B",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--model_type", "qwen1.5-4b"],
+      "justMyCode": true
+    },
+    {
+      "name": "Train Qwen1.5-14B",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--model_type", "qwen1.5-14b"],
+      "justMyCode": true
+    },
+    {
+      "name": "Train MiniCPM-2B-sft",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--model_type", "minicpm-2b-sft"],
+      "justMyCode": true
+    },
+    {
+      "name": "Model Evaluation",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/finetuning/model_finetuning.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["--model_type", "eval"],
+      "justMyCode": true
+    }
+  ]
 }

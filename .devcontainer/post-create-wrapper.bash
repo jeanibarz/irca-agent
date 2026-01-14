@@ -12,8 +12,11 @@ source /venv/bin/activate
 # Upgrade pip
 pip install --upgrade pip
 
+# Install PyTorch with CUDA support first
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
 # Install llama-cpp-python (build with cuda)
-CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install llama-cpp-python --force-reinstall --upgrade --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=on -DGGML_BLAS_VENDOR=OpenBLAS" pip install llama-cpp-python --force-reinstall --upgrade
 
 # Install dependencies
 pip install -r requirements.txt

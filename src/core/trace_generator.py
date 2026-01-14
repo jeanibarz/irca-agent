@@ -1,8 +1,10 @@
 import json
+from typing import List, Dict, Any, Callable, Optional
 
 import shortuuid
-from guidance import models, gen, select
+from guidance import models, gen, select, Program
 import torch
+import argilla as rg
 
 from dataset_generation.functions_factory import FunctionsFactory
 from core.prompt.function_calling_oneshot import prompt_template as agent_prompt_template
@@ -12,6 +14,12 @@ all_available_functions = FunctionsFactory.load_function_variants(version="v1")
 MAX_FUNCS = len(all_available_functions)
 DEFAULT_WORKSPACE = "function_calling"
 DEFAULT_DATASET = "user_query_ds"
+
+THOUGHT_PROMPT = "Thought: "
+ACTION_CHOICE_PROMPT = "Action choice: "
+CALL_FUNCTION_PROMPT = 'Call function: {"name": "'
+FUNCTION_OUTPUT_PROMPT = "Output[{shortuuid}]: "
+FINAL_ANSWER_PROMPT = "\n\n### FINAL ANSWER\n"
 
 
 class GuidedTraceGenerator:
@@ -32,41 +40,79 @@ class GuidedTraceGenerator:
             )
         self.llama2_model = llama2_model
 
-    def _generate_thought(self, lm, trace, prefix="", suffix="", temperature=0.25):
-        lm += (
-            prefix
-            + "Thought: "
-            + gen(
-                max_tokens=500,
-                name="thought",
-                stop="\n",
-                temperature=temperature,
+    def _generate_step(
+        self,
+        lm: Program,
+        trace: List[Dict[str, Any]],
+        step_type: StepType,
+        prompt_prefix: str,
+        gen_function: Callable,
+        gen_name: str,
+        step_params: Dict[str, Any],
+        prefix: str = "",
+        suffix: str = "",
+        temperature: float = 0.25,
+        max_tokens: int = 500,
+    ) -> Program:
+        try:
+            lm += (
+                prefix
+                + prompt_prefix
+                + gen_function(
+                    max_tokens=max_tokens,
+                    name=gen_name,
+                    stop=["\n", "<|wait|>"],
+                    temperature=temperature,
+                )
+                + suffix
             )
-            + suffix
-        )
-        step = create_step_model(
-            step_type=StepType.THOUGHT,
-            thought=lm["thought"],
-            diff=prefix + "Thought: " + lm["thought"] + suffix,
-        )
-        trace.append(step)
-        return lm
+            step = create_step_model(
+                step_type=step_type,
+                diff=prefix + prompt_prefix + lm[gen_name] + suffix,
+                **step_params,
+            )
+            trace.append(step)
+            return lm
+        except Exception as e:
+            print(f"Error generating step: {e}")
+            return lm
 
-    def _generate_thought_missing_function(self, lm, trace, prefix="", suffix=""):
+    def _generate_thought(
+        self, lm: Program, trace: List[Dict[str, Any]], prefix: str = "", suffix: str = "", temperature: float = 0.25
+    ) -> Program:
+        return self._generate_step(
+            lm=lm,
+            trace=trace,
+            step_type=StepType.THOUGHT,
+            prompt_prefix=THOUGHT_PROMPT,
+            gen_function=gen,
+            gen_name="thought",
+            step_params={"thought": lm["thought"]},
+            prefix=prefix,
+            suffix=suffix,
+            temperature=temperature,
+            max_tokens=500,
+        )
+
+    def _generate_thought_missing_function(
+        self, lm: Program, trace: List[Dict[str, Any]], prefix: str = "", suffix: str = ""
+    ) -> Program:
         forced_thought = "I can't find any function that could be helpful to answer user query. I need to abort the Iterative Resolution Cycle and return a final answer."
         lm += prefix + forced_thought + suffix
         step = create_step_model(
             step_type=StepType.THOUGHT,
             thought=forced_thought,
-            diff=prefix + "Thought: " + forced_thought + suffix,
+            diff=prefix + THOUGHT_PROMPT + forced_thought + suffix,
         )
         trace.append(step)
         return lm
 
-    def _generate_action_choice(self, lm, trace, prefix="", suffix=""):
+    def _generate_action_choice(
+        self, lm: Program, trace: List[Dict[str, Any]], prefix: str = "", suffix: str = ""
+    ) -> Program:
         lm += (
             prefix
-            + "Action choice: "
+            + ACTION_CHOICE_PROMPT
             + select(
                 options=[
                     "call function",
@@ -79,15 +125,22 @@ class GuidedTraceGenerator:
         step = create_step_model(
             step_type=StepType.ACTION_CHOICE,
             action_choice=lm["action_choice"],
-            diff=prefix + "Action choice: " + lm["action_choice"] + suffix,
+            diff=prefix + ACTION_CHOICE_PROMPT + lm["action_choice"] + suffix,
         )
         trace.append(step)
         return lm
 
-    def _generate_function_call(self, lm, trace, prefix="", suffix="<|wait|>", temperature=0.0):
+    def _generate_function_call(
+        self,
+        lm: Program,
+        trace: List[Dict[str, Any]],
+        prefix: str = "",
+        suffix: str = "<|wait|>",
+        temperature: float = 0.0,
+    ) -> Program:
         lm += (
             prefix
-            + 'Call function: {"name": "'
+            + CALL_FUNCTION_PROMPT
             + gen("fct_name", stop='"')
             + '"}, "parameters": '
             + gen(
@@ -102,21 +155,18 @@ class GuidedTraceGenerator:
             step_type=StepType.FUNCTION_CALL,
             fct_name=lm["fct_name"],
             fct_parameters=lm["fct_parameters"],
-            diff=prefix
-            + 'Call function: {"name": "'
-            + lm["fct_name"]
-            + '"}, "parameters": '
-            + lm["fct_parameters"]
-            + suffix,
+            diff=prefix + CALL_FUNCTION_PROMPT + lm["fct_name"] + '"}, "parameters": ' + lm["fct_parameters"] + suffix,
         )
         trace.append(step)
         return lm
 
-    def _generate_function_output(self, lm, trace, prefix="", suffix="", temperature=1):
+    def _generate_function_output(
+        self, lm: Program, trace: List[Dict[str, Any]], prefix: str = "", suffix: str = "", temperature: float = 1
+    ) -> Program:
         shortuuid_output = shortuuid.uuid()
         lm += (
             prefix
-            + f"Output[{shortuuid_output}]: "
+            + FUNCTION_OUTPUT_PROMPT.format(shortuuid=shortuuid_output)
             + gen(
                 max_tokens=500,
                 name="function_output",
@@ -129,12 +179,19 @@ class GuidedTraceGenerator:
             step_type=StepType.FUNCTION_OUTPUT,
             shortuuid=shortuuid_output,
             function_output=lm["function_output"],
-            diff=prefix + f"Output[{shortuuid_output}]: " + lm["function_output"] + suffix,
+            diff=prefix + FUNCTION_OUTPUT_PROMPT.format(shortuuid=shortuuid_output) + lm["function_output"] + suffix,
         )
         trace.append(step)
         return lm
 
-    def _generate_final_answer(self, lm, trace, prefix="\n\n### FINAL ANSWER\n", suffix="<|wait|>", temperature=0.5):
+    def _generate_final_answer(
+        self,
+        lm: Program,
+        trace: List[Dict[str, Any]],
+        prefix: str = FINAL_ANSWER_PROMPT,
+        suffix: str = "<|wait|>",
+        temperature: float = 0.5,
+    ) -> Program:
         lm += (
             prefix
             + gen(
@@ -226,65 +283,71 @@ class GuidedTraceGenerator:
 
         return trace
 
-    def generate_traces(self, available_functions, user_query, lm=None, start_step=0, case="nominal"):
-        traces = []
+    def _generate_trace(self, available_functions, user_query, lm=None, start_step=0, max_steps=10, case="nominal"):
         trace = []
 
         if lm is None:
             # Instantiate agent prompt
             lm = self._generate_agent_prompt(
-                lm=self.llama2_model,
-                trace=trace,
-                available_functions=available_functions,
-                user_query=user_query,
+                lm=self.llama2_model, trace=trace, available_functions=available_functions, user_query=user_query
             )
             if start_step != 0:
                 print("Warning: argument `start_step=0` ignored as agent has been reinitialized")
             start_step = 0
 
-        # Iterative resolution cycle, with at most 10 steps
-        max_steps = 5
         curr_step = 0  # track number of steps
 
-        next_thought_prefix = ""
-        lm = self._generate_thought(
-            lm=lm,
-            trace=trace,
-            prefix="",  # because prompt starts with a new line
-        )
+        # because prompt starts with a new line, we use prefix="" here
+        lm = self._generate_thought(lm=lm, trace=trace, prefix="")
         lm = self._generate_action_choice(lm=lm, trace=trace, prefix="\n")
         while (curr_step < max_steps) and ("call" in trace[-1].action_choice.lower()):
             curr_step += 1
             lm = self._generate_function_call(lm=lm, trace=trace, prefix="\n")
-
-            # Branch in another future instance where trace where chosen function is not available
-            chosen_function_name = trace[-1]["fct_name"]
-            alt_available_functions = json.dumps(
-                [
-                    function_dict
-                    for function_dict in json.loads(available_functions)
-                    if function_dict["name"] != chosen_function_name
-                ]
-            )
-            alt_generator = GuidedTraceGenerator(
-                self.config,
-                llama2_model=self.llama2_model,  # use same LLM instance
-            )
-            alt_trace = alt_generator.generate_trace_missing_function(
-                trace=trace[
-                    0:-3
-                ],  # generate a new trace where last Thought, Action Choice, and Function call are removed
-                available_functions=alt_available_functions,  # current functions with chosen function removed
-                user_query=user_query,
-                next_thought_prefix=next_thought_prefix,
-            )
-            traces.append(alt_trace)
             lm = self._generate_function_output(lm=lm, trace=trace, prefix="\n")
             lm = self._generate_thought(lm=lm, trace=trace, prefix="\n")
             lm = self._generate_action_choice(lm=lm, trace=trace, prefix="\n")
 
         # Final answer
         lm = self._generate_final_answer(lm=lm, trace=trace)
+
+        return trace
+
+    def _generate_alt_trace(self, trace, available_functions, user_query, next_thought_prefix):
+        chosen_function_name = trace[-1]["fct_name"]
+        alt_available_functions = json.dumps(
+            [
+                function_dict
+                for function_dict in json.loads(available_functions)
+                if function_dict["name"] != chosen_function_name
+            ]
+        )
+        alt_generator = GuidedTraceGenerator(
+            self.model_name_or_path,
+            llama2_model=self.llama2_model,  # use same LLM instance
+        )
+        alt_trace = alt_generator.generate_trace_missing_function(
+            trace=trace[0:-3],  # generate a new trace where last Thought, Action Choice, and Function call are removed
+            available_functions=alt_available_functions,  # current functions with chosen function removed
+            user_query=user_query,
+            next_thought_prefix=next_thought_prefix,
+        )
+        return alt_trace
+
+    def generate_single_trace(self, available_functions, user_query, lm=None, start_step=0, case="nominal"):
+        return self._generate_trace(available_functions, user_query, lm, start_step, max_steps=10, case=case)
+
+    def generate_traces(self, available_functions, user_query, lm=None, start_step=0, case="nominal"):
+        traces = []
+        trace = self._generate_trace(available_functions, user_query, lm, start_step, max_steps=5, case=case)
+
+        # Branch in another future instance where trace where chosen function is not available
+        max_steps = 5
+        curr_step = 0
+        next_thought_prefix = ""
+        while (curr_step < max_steps) and ("call" in trace[-1].action_choice.lower()):
+            curr_step += 1
+            alt_trace = self._generate_alt_trace(trace, available_functions, user_query, next_thought_prefix)
+            traces.append(alt_trace)
 
         traces.append(trace)
 

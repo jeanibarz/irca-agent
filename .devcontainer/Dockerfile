@@ -10,7 +10,7 @@ WORKDIR /workspace
 # Install python3-venv before creating the virtual environment
 RUN apt-get update && \
     apt-get install -y \
-        python3-venv apt-transport-https ca-certificates gnupg curl sudo tree && \
+    python3-venv apt-transport-https ca-certificates gnupg curl sudo tree && \
     rm -rf /var/lib/apt/lists/*
 
 # # Create a vscode group and user
@@ -27,6 +27,7 @@ RUN apt-get update && \
 # # Install depencencies
 # RUN pip install --upgrade pip \
 #     && pip install pytest cmake scikit-build setuptools fastapi uvicorn sse-starlette pydantic-settings starlette-context guidance
+
 
 # # Install llama-cpp-python (build with cuda)
 # RUN CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install llama-cpp-python --force-reinstall --upgrade --no-cache-dir

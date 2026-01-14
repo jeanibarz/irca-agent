@@ -1,1 +1,0 @@
-https://developers.google.com/keep/api/reference/rest?hl=fr

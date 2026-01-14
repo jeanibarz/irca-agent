@@ -67,7 +67,7 @@ def create_and_push_user_query_dataset(name, workspace=DEFAULT_WORKSPACE):
 
 def generate_completion(available_functions, user_query, agent_scratchpad):
     from openai import OpenAI
-    from prompt.function_calling_oneshot import prompt_template
+    from core.prompt.function_calling_oneshot import prompt_template
 
     client = OpenAI()
 
@@ -94,14 +94,10 @@ def generate_completion(available_functions, user_query, agent_scratchpad):
     return first_choice.text
 
 
-def create_record(
-    available_functions, user_query, agent_scratchpad, original_completion=None
-):
+def create_record(available_functions, user_query, agent_scratchpad, original_completion=None):
     if not original_completion:
         # Run the LLM to generate a completion
-        original_completion = generate_completion(
-            available_functions, user_query, agent_scratchpad
-        )
+        original_completion = generate_completion(available_functions, user_query, agent_scratchpad)
 
     corrected_completion = original_completion
 

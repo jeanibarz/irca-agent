@@ -7,6 +7,9 @@
   "service": "app",
   "workspaceFolder": "/workspace",
   "postCreateCommand": "bash ./.devcontainer/post-create-wrapper.bash",
+  "mounts": [
+    "source=/mnt/d,target=/mnt/d,type=bind,consistency=cached"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
@@ -25,12 +28,14 @@
         "robocorp.robocorp-code",
         "robocorp.robotframework-lsp",
         "mhutchie.git-graph",
-        "GrapeCity.gc-excelviewer"
+        "GrapeCity.gc-excelviewer",
+        "donjayamanne.python-environment-manager",
+        "donjayamanne.python-extension-pack",
+        "ms-python.debugpy"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/venv/bin/python",
-        "python.formatting.provider": "none",
-        "editor.defaultFormatter": "ms-python.black-formatter",
+        "python.formatting.provider": "black",
         "editor.formatOnSave": true,
         "editor.rulers": [100, 119, 140],
         "black-formatter.args": ["--line-length", "119"],

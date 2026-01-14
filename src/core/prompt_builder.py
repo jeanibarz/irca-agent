@@ -14,6 +14,21 @@ from core.utils import extract_and_remove
 
 
 def build_full_prompt(sample):
+    """
+    Constructs a full prompt string from a sample dictionary.
+
+    This function takes a dictionary containing different parts of a prompt
+    (system instructions, example, available functions, user query, and
+    assistant completion) and combines them into a single formatted string.
+
+    Args:
+        sample (dict): A dictionary containing the prompt components.
+                       Expected keys: "system_instructions", "example",
+                       "available_functions_json", "user_query", "assistant_completion".
+
+    Returns:
+        str: The complete formatted prompt string.
+    """
     # Extracting parts from the sample
     system_instructions = sample.get("system_instructions", "")
     example = sample.get("example", "")
@@ -46,6 +61,21 @@ Note: ensure you only use information provided in the context above or below. Do
 
 
 def parse_corrected_agent_trace(full_prompt):
+    """
+    Parses a full prompt string to extract its constituent parts.
+
+    This function takes a complete prompt string and uses markers to
+    separate it into system instructions, example, available functions,
+    user query, and assistant completion.
+
+    Args:
+        full_prompt (str): The complete prompt string to parse.
+
+    Returns:
+        dict: A dictionary containing the parsed prompt components.
+              Keys: "system_instructions", "example", "available_functions_json",
+              "user_query", "assistant_completion".
+    """
     # Extracting and removing parts from the full_prompt
     system_instructions, full_prompt = extract_and_remove(
         start_marker="### INSTRUCTIONS",
@@ -98,11 +128,37 @@ iteration_nbr = 0
 
 
 def randomize_newline_characters(text):
+    """
+    Randomizes newline characters in a given text.
+
+    Replaces all newline characters ('\n') with a randomly chosen newline
+    character from ['\n', '\r\n'].
+
+    Args:
+        text (str): The input text to randomize newline characters in.
+
+    Returns:
+        str: The text with randomized newline characters.
+    """
     newline_choice = random.choice(["\n", "\r\n"])
     return text.replace("\n", newline_choice)
 
 
 def randomize_system_instructions_formatting(system_instructions):
+    """
+    Randomizes the formatting of system instructions.
+
+    This function randomly alters the formatting of system instructions by:
+    1. Optionally replacing specific markers (### INSTRUCTIONS, etc.) with
+       different markers or removing them.
+    2. Adding random newline characters.
+
+    Args:
+        system_instructions (str): The system instructions text to randomize.
+
+    Returns:
+        str: The system instructions with randomized formatting.
+    """
     # Randomly choose a formatting style
     format_style = random.choice([1, 2])
 
@@ -124,6 +180,22 @@ def randomize_system_instructions_formatting(system_instructions):
 
 
 def format_instruction(sample, random_augmentation=True):
+    """
+    Formats a sample instruction, potentially with random augmentations.
+
+    This function takes a sample, extracts the full prompt, parses it,
+    and then applies random augmentations if specified. It then rebuilds
+    the formatted prompt.
+
+    Args:
+        sample (dict): A dictionary containing the sample data,
+                       including 'corrected_agent_trace'.
+        random_augmentation (bool, optional): Whether to apply random
+                                              augmentations. Defaults to True.
+
+    Returns:
+        str: The formatted instruction string.
+    """
     global iteration_nbr
     print(f"format {iteration_nbr}")
     iteration_nbr += 1
