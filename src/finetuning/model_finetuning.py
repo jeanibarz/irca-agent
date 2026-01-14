@@ -1,65 +1,54 @@
-# model_finetuning.py
+"""
+Model Fine-tuning Script for IRCA-Agent
 
-import os
+Fine-tunes a language model using LoRA/QLoRA for function-calling capabilities.
+
+Usage:
+    python -m src.finetuning.model_finetuning --model_type mistral
+"""
+
 import argparse
-import torch
 import logging
 import sys
-import trl
+
 import datasets
-import transformers
-import peft
 import huggingface_hub
-import dotenv
-import core.utils as utils
-import core.prompt_builder as prompt_builder
+import peft
+import torch
+import transformers
+import trl
 
-from defaults.v1.training_args import training_args
-
-import json
-import jsonschema
-
-# Constants
-DOTENV_PATH = "/workspace/.env"
-WORKSPACE_DIR = "/workspace"
-MODELS_DIR = "models"
-FINETUNED_MODELS_DIR = "finetuned_models"
-LOG_LEVEL = logging.DEBUG
-VERSION = "v1"
-SCHEMA_PATH = f"/workspace/src/core/schemas/{VERSION}/training_args.json"
+from config import get_settings
+from core import prompt_builder, utils
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
-logger.debug("Loading environment variables from .env file.")
-dotenv.load_dotenv(DOTENV_PATH)
 
-
-def load_and_validate_schema(schema_file, data):
-    with open(schema_file, "r") as file:
-        schema = json.load(file)
-    jsonschema.validate(instance=data, schema=schema)
-
-
-def setup_logging():
+def setup_logging(level: int = logging.DEBUG) -> logging.Logger:
+    """Configure logging for the training process."""
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[logging.StreamHandler(sys.stdout)],
     )
-    logger.setLevel(LOG_LEVEL)
-    datasets.utils.logging.set_verbosity(LOG_LEVEL)
-    transformers.utils.logging.set_verbosity(LOG_LEVEL)
+    logger.setLevel(level)
+    datasets.utils.logging.set_verbosity(level)
+    transformers.utils.logging.set_verbosity(level)
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
     return logger
 
 
-def setup_peft_config(training_args):
-    # LoRA config based on QLoRA paper
-    peft_config = peft.LoraConfig(
-        r=training_args["lora_r"],
-        lora_alpha=training_args["lora_alpha"],
+def setup_peft_config(config: dict) -> peft.LoraConfig:
+    """
+    Create LoRA configuration for parameter-efficient fine-tuning.
+
+    Based on QLoRA paper recommendations.
+    """
+    return peft.LoraConfig(
+        r=config["lora_r"],
+        lora_alpha=config["lora_alpha"],
         target_modules=[
             "q_proj",
             "k_proj",
@@ -71,17 +60,37 @@ def setup_peft_config(training_args):
             "lm_head",
         ],
         bias="none",
-        lora_dropout=training_args["lora_dropout"],
+        lora_dropout=config["lora_dropout"],
         task_type="CAUSAL_LM",
     )
-    return peft_config
 
 
-def load_and_prepare_model(config, peft_config):
-    huggingface_hub.login(token=os.getenv("HUGGINGFACE_TOKEN"))
+def load_and_prepare_model(
+    config: dict,
+    peft_config: peft.LoraConfig,
+    settings=None,
+) -> tuple:
+    """
+    Load model and tokenizer, apply quantization and LoRA.
+
+    Args:
+        config: Training configuration dictionary
+        peft_config: LoRA configuration
+        settings: Optional Settings instance
+
+    Returns:
+        Tuple of (model, tokenizer)
+    """
+    settings = settings or get_settings()
+
+    # Login to HuggingFace Hub if token is available
+    if settings.huggingface_token:
+        huggingface_hub.login(token=settings.huggingface_token)
+
     model_id = config["base_model"]
+    logger.info(f"Loading base model: {model_id}")
 
-    # BitsAndBytesConfig to quantize the model int-4 config
+    # BitsAndBytesConfig for 4-bit quantization
     bnb_config = transformers.BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
@@ -89,7 +98,7 @@ def load_and_prepare_model(config, peft_config):
         bnb_4bit_compute_dtype=torch.bfloat16,
     )
 
-    # load model and tokenizer
+    # Load model
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_id,
         quantization_config=bnb_config,
@@ -99,27 +108,47 @@ def load_and_prepare_model(config, peft_config):
     )
     model.config.pretraining_tp = 1
 
+    # Load tokenizer
     tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
     tokenizer.pad_token = tokenizer.eos_token
 
-    # prepare model for training
+    # Prepare model for k-bit training and apply LoRA
     model = peft.prepare_model_for_kbit_training(model)
     model = peft.get_peft_model(model, peft_config)
 
     return model, tokenizer
 
 
-def setup_training(model, tokenizer, dataset, training_args, peft_config=None):
-    model_args = transformers.TrainingArguments(
-        output_dir=os.path.join(WORKSPACE_DIR, MODELS_DIR, FINETUNED_MODELS_DIR, training_args["model_name"]),
-        num_train_epochs=training_args["num_train_epochs"],
+def setup_trainer(
+    model,
+    tokenizer,
+    dataset,
+    config: dict,
+    peft_config: peft.LoraConfig | None = None,
+) -> trl.SFTTrainer:
+    """
+    Set up the SFT trainer with training arguments.
+
+    Args:
+        model: The model to train
+        tokenizer: The tokenizer
+        dataset: Training dataset
+        config: Training configuration
+        peft_config: Optional LoRA configuration
+
+    Returns:
+        Configured SFTTrainer instance
+    """
+    training_args = transformers.TrainingArguments(
+        output_dir=config["output_dir"],
+        num_train_epochs=config["num_train_epochs"],
         per_device_train_batch_size=1,
         gradient_accumulation_steps=10,
         gradient_checkpointing=False,
         optim="adamw_8bit",
         logging_steps=2,
         save_strategy="epoch",
-        learning_rate=training_args["learning_rate"],
+        learning_rate=config["learning_rate"],
         bf16=True,
         tf32=True,
         max_grad_norm=0.3,
@@ -128,108 +157,122 @@ def setup_training(model, tokenizer, dataset, training_args, peft_config=None):
         disable_tqdm=False,
     )
 
-    train_dataset = dataset["train"]
-    trainer = trl.SFTTrainer(
+    return trl.SFTTrainer(
         model=model,
-        train_dataset=train_dataset,
+        train_dataset=dataset["train"],
         peft_config=peft_config,
-        max_seq_length=4096,
+        max_seq_length=config.get("max_seq_length", 4096),
         tokenizer=tokenizer,
         packing=True,
         formatting_func=prompt_builder.format_instruction,
-        args=model_args,
+        args=training_args,
     )
-    return trainer
 
 
-def load_config(model_type):
-    model_config = training_args["model_settings"].get(model_type)
-    if model_config is None:
-        logger.critical(f"No configuration found for model type: {model_type}")
-        sys.exit(1)
-
-    model_name_prefix = model_config["model_name"].split("_")[0]
-    version_suffix = f"_irca_agent_{training_args['version']}.gguf"
-    model_name = model_name_prefix + version_suffix
-
-    return {
-        "dataset": training_args["dataset"],
-        "push_to_hub": training_args["push_to_hub"],
-        "lora_r": training_args["lora_r"],
-        "lora_dropout": training_args["lora_dropout"],
-        "lora_alpha": training_args["lora_alpha"],
-        "num_train_epochs": training_args["num_train_epochs"],
-        "learning_rate": training_args["learning_rate"],
-        "base_model": model_config["base_model"],
-        "model_name": model_name,
-    }
-
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Model Fine-tuning Script")
+def parse_arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Fine-tune a model for IRCA Agent",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
         "--model_type",
         type=str,
         default="mistral",
-        help="Type of the model to train (e.g., 'mistral', 'tinyllama').",
+        choices=["mistral", "tinyllama", "qwen-4b", "qwen-14b"],
+        help="Type of model to train",
     )
-    return parser
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=None,
+        help="Override number of training epochs",
+    )
+    parser.add_argument(
+        "--learning_rate",
+        type=float,
+        default=None,
+        help="Override learning rate",
+    )
+    parser.add_argument(
+        "--push_to_hub",
+        action="store_true",
+        help="Push trained model to HuggingFace Hub",
+    )
+    return parser.parse_args()
 
 
 def main():
-    logger.info("Setting up logging configuration.")
+    """Main training function."""
     setup_logging()
+    logger.info("Starting IRCA-Agent model fine-tuning")
 
-    # Load and validate training_args against JSON schema
-    try:
-        load_and_validate_schema(SCHEMA_PATH, training_args)
-        logger.info("training_args validation successful.")
-    except jsonschema.exceptions.ValidationError as e:
-        logger.critical(f"training_args validation failed: {e}")
-        sys.exit(1)
+    # Parse arguments
+    args = parse_arguments()
+    logger.info(f"Model type: {args.model_type}")
 
-    parser = parse_arguments()
-    args = parser.parse_args()
-    logger.info("Command-line arguments parsed successfully.")
+    # Load settings from environment
+    settings = get_settings()
+    logger.debug(f"Workspace directory: {settings.workspace_dir}")
 
-    logger.info(f"Model type selected: {args.model_type}")
-    config = load_config(args.model_type)
-    logger.debug(f"Loaded model configuration: {config}")
+    # Get training configuration
+    config = settings.get_training_config(args.model_type)
 
+    # Apply command-line overrides
+    if args.epochs is not None:
+        config["num_train_epochs"] = args.epochs
+    if args.learning_rate is not None:
+        config["learning_rate"] = args.learning_rate
+    if args.push_to_hub:
+        config["push_to_hub"] = True
+
+    logger.info(f"Training configuration: {config}")
+
+    # Set up LoRA configuration
     peft_config = setup_peft_config(config)
-    logger.info("Starting model loading and preparation.")
-    model, tokenizer = load_and_prepare_model(config, peft_config)
-    logger.info("Model loading and preparation completed.")
+    logger.info("LoRA configuration created")
 
+    # Load model and tokenizer
+    logger.info("Loading and preparing model...")
+    model, tokenizer = load_and_prepare_model(config, peft_config, settings)
+    logger.info("Model loaded and prepared")
+
+    # Print trainable parameters
     utils.print_trainable_parameters(model)
 
+    # Load dataset
+    logger.info(f"Loading dataset: {config['dataset']}")
     try:
-        logger.debug(f"Dataset loading: {config['dataset']}")
         dataset = datasets.load_dataset(config["dataset"])
-        logger.debug("Dataset loading successfully completed.")
+        logger.info(f"Dataset loaded: {len(dataset['train'])} training examples")
     except Exception as e:
         logger.critical(f"Failed to load dataset: {e}")
         sys.exit(1)
 
-    trainer = setup_training(model, tokenizer, dataset, config, peft_config)
+    # Set up trainer
+    trainer = setup_trainer(model, tokenizer, dataset, config, peft_config)
 
-    logger.info("Starting the model training process...")
+    # Train
+    logger.info("Starting training...")
     trainer.train()
+    logger.info("Training completed")
 
-    logger.info("Model training completed. Saving the model.")
+    # Save model
+    logger.info(f"Saving model to: {config['output_dir']}")
     trainer.save_model()
-    logger.info(f"Model {config['model_name']} saved successfully.")
+    logger.info(f"Model saved: {config['model_name']}")
 
-    if config["push_to_hub"]:
-        logger.info(f"Pushing model {config['model_name']} to Hugging Face Hub.")
+    # Push to Hub if requested
+    if config.get("push_to_hub"):
+        logger.info(f"Pushing model to HuggingFace Hub: {config['model_name']}")
         trainer.model.push_to_hub(config["model_name"])
+        logger.info("Model pushed to Hub")
 
+    # Cleanup
     torch.cuda.empty_cache()
-
-    logger.info("Model fine-tuning script execution completed.")
+    logger.info("Fine-tuning completed successfully")
 
 
 if __name__ == "__main__":
     main()
 
-    logger.info("Model fine-tuning script executed successfully. Exiting.")
