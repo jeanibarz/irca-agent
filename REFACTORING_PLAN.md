@@ -237,48 +237,29 @@ class TraceGenerator:
 
 ---
 
-### Phase 4: Script Consolidation
+### Phase 4: Script Consolidation ✅ COMPLETE
 **Goal:** Create a clean CLI interface  
 **Time Estimate:** 3-4 hours  
 **Risk:** Low
 
 #### 4.1 Create CLI Entry Point
-```python
-# src/cli/__init__.py
-import click
+- [x] Created `src/cli/` module with Click-based CLI
+- [x] Command groups: `generate`, `finetune`, `dataset`
 
-@click.group()
-def cli():
-    """IRCA-Agent: Dataset generation and model finetuning."""
-    pass
-
-@cli.command()
-@click.option('--config', type=click.Path(exists=True))
-def generate(config):
-    """Generate agent traces for dataset."""
-    pass
-
-@cli.command()
-@click.option('--model-type', type=str, default='mistral')
-def finetune(model_type):
-    """Finetune a model on IRCA dataset."""
-    pass
-
-@cli.command()
-def push():
-    """Push dataset to HuggingFace Hub."""
-    pass
+```
+irca --help
+irca generate traces --model path/to/model --limit 10
+irca finetune run --model-type mistral --epochs 5
+irca dataset push --source dataset_name --target user/repo
 ```
 
 #### 4.2 Update pyproject.toml
-```toml
-[tool.poetry.scripts]
-irca = "src.cli:cli"
-```
+- [x] Entry point configured: `irca = "src.cli:cli"`
+- [x] Added click dependency
 
 #### 4.3 Deprecate Individual Scripts
-- [ ] Mark old scripts as deprecated
-- [ ] Add migration notes in scripts/README.md
+- [x] Mark old scripts as deprecated in scripts/README.md
+- [x] Add migration notes with CLI equivalents
 - [ ] Eventually remove after transition period
 
 ---
