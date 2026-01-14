@@ -1,26 +1,119 @@
 [tool.poetry]
 name = "irca-agent"
 version = "0.1.0"
-description = ""
+description = "Dataset generation toolkit for finetuning function-calling agents with data augmentation techniques"
 authors = ["Jean IBARZ <ibarz.jean@gmail.com>"]
 readme = "README.md"
+packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-distilabel = "^1.4.1"
-torch = "^2.5.1"
-nltk = "^3.9.1"
-python-dotenv = "^1.0.1"
-transformers = "^4.46.2"
-trl = "^0.12.0"
-bitsandbytes = "^0.44.1"
-accelerate = "^1.1.1"
-peft = "^0.13.2"
-protobuf = ">=3.20.0,<3.21.0"
-wandb = "^0.18.6"
-llama-cpp-python = "^0.3.1"
+python = "^3.10,<3.13"
 
+# Core ML/AI
+torch = "^2.5.1"
+transformers = "^4.47.0"
+accelerate = "^1.2.0"
+peft = "^0.14.0"
+trl = "^0.13.0"
+bitsandbytes = "^0.45.0"
+
+# Guidance for constrained generation
+guidance = "^0.2.0"
+
+# Dataset management
+datasets = "^3.2.0"
+argilla = "^2.8.0"
+huggingface-hub = "^0.27.0"
+
+# Utilities
+python-dotenv = "^1.0.1"
+shortuuid = "^1.0.13"
+pydantic = "^2.10.0"
+pydantic-settings = "^2.7.0"
+jsonschema = "^4.23.0"
+
+# Logging & Monitoring
+wandb = "^0.19.0"
+
+# Optional: local inference
+llama-cpp-python = {version = "^0.3.4", optional = true}
+
+[tool.poetry.extras]
+local-inference = ["llama-cpp-python"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-cov = "^6.0.0"
+pytest-asyncio = "^0.25.0"
+ruff = "^0.9.0"
+mypy = "^1.14.0"
+pre-commit = "^4.0.0"
+ipython = "^8.31.0"
+
+[tool.poetry.scripts]
+irca = "src.cli:cli"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.9.0"]
 build-backend = "poetry.core.masonry.api"
+
+# ============================================
+# Tool Configurations
+# ============================================
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "tests/",
+    "scripts/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src --cov-report=term-missing --cov-report=html"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

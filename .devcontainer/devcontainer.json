@@ -1,9 +1,6 @@
 {
   "name": "irca_agent_devcontainer",
   "dockerComposeFile": "../docker-compose.dev.yml",
-  // "remoteUser": "vscode",
-  // "containerUser": "vscode",
-  // "updateRemoteUserUID": true,
   "service": "app",
   "workspaceFolder": "/workspace",
   "postCreateCommand": "bash ./.devcontainer/post-create-wrapper.bash",
@@ -14,37 +11,42 @@
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "ms-python.black-formatter",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-python.debugpy",
         "ms-vscode-remote.remote-containers",
         "redhat.vscode-yaml",
         "aaron-bond.better-comments",
-        "wowbox.code-debuger",
         "bierner.markdown-mermaid",
-        "rogalmic.bash-debug",
-        "p1c2u.docker-compose",
-        "ms-azuretools.vscode-docker",
-        "robocorp.robocorp-code",
-        "robocorp.robotframework-lsp",
         "mhutchie.git-graph",
         "GrapeCity.gc-excelviewer",
-        "donjayamanne.python-environment-manager",
-        "donjayamanne.python-extension-pack",
-        "ms-python.debugpy"
+        "ms-toolsai.jupyter"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/venv/bin/python",
-        "python.formatting.provider": "black",
+        "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
         "editor.formatOnSave": true,
-        "editor.rulers": [100, 119, 140],
-        "black-formatter.args": ["--line-length", "119"],
+        "editor.rulers": [
+          100,
+          120
+        ],
+        "editor.codeActionsOnSave": {
+          "source.fixAll.ruff": "explicit",
+          "source.organizeImports.ruff": "explicit"
+        },
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
         "python.analysis.extraPaths": [
-          "${workspaceFolder}/src",
-          "${workspaceFolder}/schemas",
-          "${workspaceFolder}/defaults",
-          "${workspaceFolder}/robocorp-action-server/irca-agent/."
-        ]
+          "${workspaceFolder}/src"
+        ],
+        "python.analysis.typeCheckingMode": "basic",
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/.pytest_cache": true,
+          "**/.mypy_cache": true,
+          "**/*.pyc": true
+        }
       }
     }
   }

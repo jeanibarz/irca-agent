@@ -1,47 +1,48 @@
 #!/bin/bash
+set -e
+
+echo "🚀 Setting up IRCA-Agent development environment..."
 
 # Navigate to the workspace directory
 cd /workspace
 
-# Create a virtual environment
-python3 -m venv /venv
+# Ensure Poetry is in PATH
+export PATH="/opt/poetry/bin:$PATH"
 
-# Activate the virtual environment
-source /venv/bin/activate
+# Install all dependencies including dev
+echo "📦 Installing dependencies with Poetry..."
+poetry install --with dev
 
-# Upgrade pip
-pip install --upgrade pip
+# Install llama-cpp-python with CUDA support (optional)
+if [ "${INSTALL_LLAMA_CPP:-false}" = "true" ]; then
+    echo "🦙 Installing llama-cpp-python with CUDA support..."
+    CMAKE_ARGS="-DGGML_CUDA=on" poetry run pip install llama-cpp-python --force-reinstall --upgrade
+fi
 
-# Install PyTorch with CUDA support first
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Activate virtual environment in .bashrc for convenience
+echo 'source /workspace/.venv/bin/activate 2>/dev/null || true' >> ~/.bashrc
+echo 'export PYTHONPATH="/workspace/src:$PYTHONPATH"' >> ~/.bashrc
 
-# Install llama-cpp-python (build with cuda)
-CMAKE_ARGS="-DGGML_CUDA=on -DGGML_BLAS_VENDOR=OpenBLAS" pip install llama-cpp-python --force-reinstall --upgrade
+# Set up pre-commit hooks if available
+if command -v pre-commit &> /dev/null; then
+    echo "🔧 Setting up pre-commit hooks..."
+    poetry run pre-commit install || true
+fi
 
-# Install dependencies
-pip install -r requirements.txt
-pip install pytest cmake scikit-build setuptools fastapi uvicorn sse-starlette pydantic-settings starlette-context guidance
+# Create necessary directories
+mkdir -p models datasets
 
-# Download and install Robocorp Action Server
-curl -o action-server https://downloads.robocorp.com/action-server/releases/latest/linux64/action-server
-chmod a+x action-server
-sudo mv action-server /usr/local/bin/
+# Copy .env if it doesn't exist
+if [ ! -f .env ]; then
+    cp .env.example .env
+    echo "📝 Created .env from .env.example - please update with your tokens"
+fi
 
-# Download and install RCC
-curl -o rcc https://downloads.robocorp.com/rcc/releases/latest/linux64/rcc
-chmod a+x rcc
-sudo mv rcc /usr/local/bin/
-
-
-# Import Google Cloud public key
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-
-# Add gloud CLI distribution URL as package source
-echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-
-# Install google-cloud-cli
-sudo apt-get update && sudo apt-get install google-cloud-cli
-
-# To create an action-server, run action-server new
-
-echo "Dev Container successfully set up !"
+echo ""
+echo "✅ Dev Container successfully set up!"
+echo ""
+echo "Next steps:"
+echo "  1. Update .env with your API tokens"
+echo "  2. Run 'poetry shell' to activate the environment"
+echo "  3. Run 'pytest' to verify everything works"
+echo ""

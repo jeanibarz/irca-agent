@@ -2,43 +2,39 @@
 FROM huggingface/transformers-pytorch-gpu
 
 ENV TZ=Europe/Paris
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Set the working directory in the container
 WORKDIR /workspace
 
-# Install python3-venv before creating the virtual environment
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y \
-    python3-venv apt-transport-https ca-certificates gnupg curl sudo tree && \
-    rm -rf /var/lib/apt/lists/*
+    python3-venv \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    curl \
+    sudo \
+    tree \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# # Create a vscode group and user
-# RUN groupadd vscode && \
-#     useradd -rm -d /home/vscode -s /bin/bash -g vscode -G sudo -u 1000 vscode
+# Install Poetry
+ENV POETRY_HOME="/opt/poetry"
+ENV POETRY_VIRTUALENVS_CREATE=true
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+ENV POETRY_NO_INTERACTION=1
+ENV PATH="$POETRY_HOME/bin:$PATH"
 
-# # Grant vscode user passwordless sudo privileges
-# RUN echo "vscode ALL=(ALL) NOPASSWD: ALL" | tee /etc/sudoers.d/vscode
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
-# Create a virtual environment and activate it
-# RUN python3 -m venv .venv
-# ENV PATH="/workspace/.venv/bin:$PATH"
+# Copy dependency files first (for better caching)
+COPY pyproject.toml ./
 
-# # Install depencencies
-# RUN pip install --upgrade pip \
-#     && pip install pytest cmake scikit-build setuptools fastapi uvicorn sse-starlette pydantic-settings starlette-context guidance
-
-
-# # Install llama-cpp-python (build with cuda)
-# RUN CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install llama-cpp-python --force-reinstall --upgrade --no-cache-dir
-
-# # Change ownership of the /workspace and other necessary directories to vscode user
-# RUN chown -R vscode:vscode /workspace
-
-# # Append virtual environment activation command to .bashrc
-# RUN echo "source /workspace/.venv/bin/activate" >> /home/vscode/.bashrc
-
-# # Switch to vscode user
-# USER vscode
+# Install dependencies (without dev dependencies for smaller image)
+# Dev dependencies will be installed in post-create
+RUN poetry install --no-root --only main || true
 
 CMD ["/bin/bash"]
+
