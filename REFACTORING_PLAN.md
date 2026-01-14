@@ -193,50 +193,47 @@ git commit -m "chore: cleanup irrelevant files and update .gitignore"
 
 ---
 
-### Phase 3: Core Module Refactoring
+### Phase 3: Core Module Refactoring ✅ COMPLETE
 **Goal:** Improve modularity and testability  
 **Time Estimate:** 4-6 hours  
 **Risk:** Medium
 
-#### 3.1 Refactor `trace_generator.py` (429 lines → ~200 lines each)
-Split into focused modules:
+#### 3.1 Refactor `trace_generator.py` (429 lines → focused modules)
+- [x] Split into focused modules:
 
 ```
 src/core/
-├── generation/
+├── domain/              # Data models
 │   ├── __init__.py
-│   ├── base.py              # Base generator class
+│   ├── steps.py         # Step types (from step_factory.py)
+│   └── trace.py         # Trace model
+├── generation/          # Trace generation
+│   ├── __init__.py
+│   ├── constants.py     # Prompt constants
 │   ├── trace_generator.py   # Main orchestration
 │   ├── step_generators.py   # Individual step generation
-│   └── prompts.py           # Prompt construction
-├── models/
-│   ├── __init__.py
-│   ├── steps.py             # Step types (from step_factory.py)
-│   └── trace.py             # Trace model
+│   └── argilla.py       # Argilla integration
 └── utils.py
 ```
 
 #### 3.2 Introduce Dependency Injection
-```python
-# Before (tight coupling)
-class GuidedTraceGenerator:
-    def __init__(self, model_name_or_path):
-        self.llama2_model = models.Transformers(model=model_name_or_path, ...)
+- [x] TraceGenerator accepts pre-initialized model
+- [x] Protocol-based interface for models
 
-# After (dependency injection)
-class GuidedTraceGenerator:
-    def __init__(self, model: LanguageModel, prompt_builder: PromptBuilder):
-        self.model = model
-        self.prompt_builder = prompt_builder
+```python
+# Now supports dependency injection
+class TraceGenerator:
+    def __init__(self, model_name_or_path: str | None = None, model: LanguageModel | None = None):
+        # Can inject model or load from path
 ```
 
 #### 3.3 Remove Global State
-- [ ] Remove `iteration_nbr` global in `prompt_builder.py`
-- [ ] Use class-based state management or pass state explicitly
+- [x] Remove `iteration_nbr` global in `prompt_builder.py`
+- [x] Use InstructionFormatter class for state management
 
 #### 3.4 Add Type Hints
-- [ ] Add comprehensive type hints to all modules
-- [ ] Use `mypy` for type checking
+- [x] Add comprehensive type hints to all modules
+- [x] Backwards compatibility maintained via re-exports
 
 ---
 
