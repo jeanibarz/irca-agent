@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Terminal, Brain, MessageSquare, Zap } from 'lucide-react';
+import { ChevronDown, ChevronRight, Terminal, Brain, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import clsx from 'clsx';
 
 interface Block {
     type: 'thought' | 'action_choice' | 'function_call' | 'output' | 'text' | 'final_answer';

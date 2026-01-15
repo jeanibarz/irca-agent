@@ -1,8 +1,12 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from config import get_settings
 from server.model_manager import ModelManager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 settings = get_settings()
@@ -34,11 +38,15 @@ async def list_models() -> list[ModelInfo]:
 
     # 2. Adapters (Scan directory)
     finetuned_dir = settings.finetuned_models_path
+    logger.info(f"Scanning for adapters in: {finetuned_dir}")
+    logger.info(f"Directory exists: {finetuned_dir.exists()}")
     if finetuned_dir.exists():
         for item in finetuned_dir.iterdir():
+            logger.info(f"Found item: {item.name}, is_dir: {item.is_dir()}")
             if item.is_dir():
                 models.append(ModelInfo(id=item.name, type="adapter", path=str(item)))
 
+    logger.info(f"Total models found: {len(models)}")
     return models
 
 
