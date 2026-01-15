@@ -75,6 +75,3 @@ htmlcov/
 coverage.xml
 
 # Assistant memory files
-CLAUDE.md
-MEMORY.md
-EXPERIENCES.md
