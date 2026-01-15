@@ -57,10 +57,6 @@ async def load_model(request: LoadModelRequest) -> dict[str, str]:
     """
     manager = ModelManager.get_instance()
     try:
-        # Resolve user friendly IDs (like 'mistral-v3') to actual HF IDs if needed
-        # For simplicity, assuming request sends full ID or we map it via presets (TODO improvement)
-        # But wait, frontend sends what /models returns.
-
         # Check if adapter_id is a short name or path
         adapter_path = None
         if request.adapter_id:
@@ -71,7 +67,29 @@ async def load_model(request: LoadModelRequest) -> dict[str, str]:
             else:
                 adapter_path = request.adapter_id  # Assume absolute or HF ID
 
-        manager.load_model(request.base_model_id, adapter_path)
+        await manager.load_model(request.base_model_id, adapter_path)
         return {"status": "success", "message": f"Loaded {request.base_model_id} with {adapter_path}"}
+    except RuntimeError as e:
+        # Busy
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Error loading model: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/model/current")
+async def get_current_model() -> dict[str, str | None]:
+    manager = ModelManager.get_instance()
+    return {"base_model_id": manager.current_base_model_id, "adapter_id": manager.current_adapter_id}
+
+
+@router.post("/model/eject")
+async def eject_model() -> dict[str, str]:
+    manager = ModelManager.get_instance()
+    try:
+        await manager.eject_model()
+        return {"status": "success", "message": "Model ejected"}
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e

@@ -50,5 +50,20 @@ export const api = {
     generate: async (req: GenerationRequest): Promise<GenerationResponse> => {
         const res = await axios.post(`${API_BASE}/chat/completions`, req);
         return res.data;
+    },
+
+    generateSyntheticQuery: async (tools: FunctionDefinition[], type: 'feasible' | 'infeasible'): Promise<{ query: string }> => {
+        const res = await axios.post(`${API_BASE}/synthetic/query`, { tools, type });
+        return res.data;
+    },
+
+    getCurrentModel: async (): Promise<{ base_model_id: string | null, adapter_id: string | null }> => {
+        const res = await axios.get(`${API_BASE}/model/current`);
+        return res.data;
+    },
+
+    ejectModel: async (): Promise<{ status: string, message: string }> => {
+        const res = await axios.post(`${API_BASE}/model/eject`);
+        return res.data;
     }
 };

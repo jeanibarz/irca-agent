@@ -57,7 +57,7 @@ async def generate_chat_completion(request: GenerationRequest) -> GenerationResp
             # For now, simplistic error
             raise HTTPException(status_code=503, detail="Model not loaded. Use /v1/model/load endpoint.")
 
-        content = manager.generate(
+        content = await manager.generate(
             prompt=prompt, max_new_tokens=request.max_tokens, temperature=request.temperature, top_p=request.top_p
         )
 
