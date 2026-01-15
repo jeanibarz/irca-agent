@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <select
                             value={selectedModelId}
                             onChange={(e) => onSelectModel(e.target.value)}
-                            className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500/50"
+                            className="w-full bg-[#2a2a2a] border border-white/10 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500/50 [&>option]:bg-[#2a2a2a] [&>option]:text-gray-200"
                         >
                             <option value="" disabled>Select a model</option>
                             {models.map(m => (
