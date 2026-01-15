@@ -170,6 +170,7 @@ def run(
 
         tokenizer = transformers.AutoTokenizer.from_pretrained(config["base_model"])
         tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.padding_side = "right"
 
         # Prepare for training
         model = peft.prepare_model_for_kbit_training(model)

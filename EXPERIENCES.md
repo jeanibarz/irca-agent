@@ -33,6 +33,7 @@
 | Passing `max_seq_length`/`packing` to `SFTTrainer.__init__` | Use `trl.SFTConfig` and pass these args there. New `trl` versions moved these from `__init__` to config. | 2026-01-15 |
 | Missing `sentencepiece` for Mistral models | Add `sentencepiece` to `pyproject.toml` dependencies. | 2026-01-15 |
 | `TypeError: SFTTrainer.__init__() got an unexpected keyword argument` | Check if the argument belongs in `SFTConfig` instead of `__init__`. | 2026-01-15 |
+| Mistral v3 Finetuning Instability | High Learning Rate (1e-3) causes gradient explosion. Use `2e-4` or lower. Also ensure `tokenizer.padding_side='right'`. | 2026-01-15 |
 
 ---
 
@@ -41,6 +42,7 @@
 
 - **Local Dataset Loading**: Using `datasets.load_from_disk(path)` when `os.path.exists(path)` allows using locally generated datasets without pushing to Hub.
 - **Handling DatasetDict**: Always check if loaded dataset is `DatasetDict` or `Dataset` and extract `train` split if necessary to avoid `KeyError` or type errors in Trainer.
+- **Stable QLoRA LR**: For 7B models (like Mistral), a learning rate of `2e-4` is much more stable than `1e-3`.
 
 ---
 

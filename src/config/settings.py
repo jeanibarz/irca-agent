@@ -128,7 +128,7 @@ class Settings(BaseSettings):
         ge=1,
     )
     learning_rate: float = Field(
-        default=1e-3,
+        default=2e-4,
         description="Learning rate",
         gt=0,
     )

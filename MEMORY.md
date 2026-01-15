@@ -22,14 +22,18 @@
     *   Correctly load datasets from local paths using `load_from_disk`.
     *   Handle both `Dataset` and `DatasetDict` return types.
     *   Migrate from `TrainingArguments` to `trl.SFTConfig` to fix compatibility with newer `trl` versions.
+    *   **Fix**: Explicitly set `tokenizer.padding_side = "right"`.
 3.  **Dependency Updates**: Added `sentencepiece` to `pyproject.toml` (required for Mistral v0.3 tokenizer).
-4.  **Started Training**: Triggered finetuning run for Mistral v0.3.
+4.  **Tuned Hyperparameters**: Lowered default learning rate from `1e-3` to `2e-4` in `settings.py` to resolve training instability (gradient explosion).
+5.  **Started Training**: Triggered finetuning run for Mistral v0.3, confirmed stability.
 
 ### Key Findings
 
 -   **`trl` Library Breaking Changes**: The `SFTTrainer` class in recent `trl` versions no longer accepts `max_seq_length` or `packing` in its `__init__`. These must now be passed via the `args` parameter using an `SFTConfig` object (which inherits from `TrainingArguments`).
 -   **Mistral v0.3 Requirements**: The tokenizer for v0.3 relies on `sentencepiece`, which wasn't previously a dependency.
 -   **Dataset Loading**: `datasets.load_dataset` is for Hub/script loading, while `datasets.load_from_disk` is needed for local Arrow datasets. The former can be ambiguous with local paths.
+-   **Training Instability**: Mistral v0.3 QLoRA appears highly sensitive to learning rate. The default `1e-3` caused immediate gradient explosion ($||\nabla|| > 500$) and loss divergence. Lowering to `2e-4` stabilized it ($||\nabla|| \approx 0.2$).
+-   **Padding Side**: `SFTTrainer` (or underlying libraries) explicitly warns if padding side is not 'right' for fp16 training, potentially causing overflow issues.
 
 ### Files Created
 
