@@ -1,0 +1,69 @@
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from config import get_settings
+from server.model_manager import ModelManager
+
+router = APIRouter()
+settings = get_settings()
+
+
+class ModelInfo(BaseModel):
+    id: str
+    type: str  # "base" or "adapter"
+    path: str
+
+
+class LoadModelRequest(BaseModel):
+    base_model_id: str
+    adapter_id: str | None = None
+
+
+@router.get("/models", response_model=list[ModelInfo])
+async def list_models() -> list[ModelInfo]:
+    """
+    List available models and adapters.
+    """
+    models = []
+
+    # 1. Base Models (Hardcoded presets)
+    presets = ["mistral", "mistral-v3", "tinyllama"]
+    for preset in presets:
+        config = settings.get_model_config(preset)
+        models.append(ModelInfo(id=config["base_model"], type="base", path=config["base_model"]))
+
+    # 2. Adapters (Scan directory)
+    finetuned_dir = settings.finetuned_models_path
+    if finetuned_dir.exists():
+        for item in finetuned_dir.iterdir():
+            if item.is_dir():
+                models.append(ModelInfo(id=item.name, type="adapter", path=str(item)))
+
+    return models
+
+
+@router.post("/model/load")
+async def load_model(request: LoadModelRequest) -> dict[str, str]:
+    """
+    Load a model into memory.
+    """
+    manager = ModelManager.get_instance()
+    try:
+        # Resolve user friendly IDs (like 'mistral-v3') to actual HF IDs if needed
+        # For simplicity, assuming request sends full ID or we map it via presets (TODO improvement)
+        # But wait, frontend sends what /models returns.
+
+        # Check if adapter_id is a short name or path
+        adapter_path = None
+        if request.adapter_id:
+            finetuned_dir = settings.finetuned_models_path
+            potential_path = finetuned_dir / request.adapter_id
+            if potential_path.exists():
+                adapter_path = str(potential_path)
+            else:
+                adapter_path = request.adapter_id  # Assume absolute or HF ID
+
+        manager.load_model(request.base_model_id, adapter_path)
+        return {"status": "success", "message": f"Loaded {request.base_model_id} with {adapter_path}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
