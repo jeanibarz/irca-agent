@@ -1,7 +1,10 @@
 """
 Tests for Utility Functions
 
-Tests the utility functions in core.utils
+Tests the utility functions in core.utils.
+Covers Requirements:
+- FR-GEN-03 (Function Augmentation helper)
+- FR-GEN-04 (Function Shuffling)
 """
 
 import json
@@ -103,7 +106,10 @@ class TestExtractAndRemove:
 
 
 class TestShuffleJsonFunctions:
-    """Tests for shuffle_json_functions function."""
+    """
+    Tests for shuffle_json_functions function.
+    Req: FR-GEN-04 (Function Shuffling)
+    """
 
     def test_shuffle_returns_valid_json(self, sample_functions_json):
         """Shuffled output is valid JSON."""

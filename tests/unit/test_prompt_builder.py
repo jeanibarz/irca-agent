@@ -1,7 +1,8 @@
 """
 Tests for Prompt Builder
-
-Tests the prompt building and parsing functions in core.prompt_builder
+ 
+ Tests the prompt building and parsing functions in core.prompt_builder.
+ Covers Requirement: **FR-GEN-05 (Prompt Randomization)**
 """
 
 from core.prompt_builder import (
@@ -15,7 +16,10 @@ from core.prompt_builder import (
 
 
 class TestBuildFullPrompt:
-    """Tests for build_full_prompt function."""
+    """
+    Tests for build_full_prompt function.
+    Req: FR-GEN-05
+    """
 
     def test_build_basic_prompt(self, sample_prompt_data):
         """Build a complete prompt from components."""
@@ -48,7 +52,10 @@ class TestBuildFullPrompt:
 
 
 class TestParseCorrectedAgentTrace:
-    """Tests for parse_corrected_agent_trace function."""
+    """
+    Tests for parse_corrected_agent_trace function.
+    Req: FR-GEN-05
+    """
 
     def test_parse_full_prompt(self):
         """Parse a complete prompt into components."""
@@ -97,7 +104,10 @@ test<|wait|>
 
 
 class TestRandomizeNewlineCharacters:
-    """Tests for randomize_newline_characters function."""
+    """
+    Tests for randomize_newline_characters function.
+    Req: FR-GEN-05
+    """
 
     def test_randomize_preserves_newlines_count(self):
         """Number of newlines should be preserved."""
@@ -121,7 +131,10 @@ class TestRandomizeNewlineCharacters:
 
 
 class TestRandomizeSystemInstructionsFormatting:
-    """Tests for randomize_system_instructions_formatting function."""
+    """
+    Tests for randomize_system_instructions_formatting function.
+    Req: FR-GEN-05
+    """
 
     def test_randomize_returns_string(self):
         """Function returns a string."""
