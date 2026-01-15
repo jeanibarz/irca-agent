@@ -28,6 +28,8 @@
 - **FR-PLAY-02 (Model Management)**: The system shall allow users to list, load, and eject models/adapters from GPU memory via the UI to manage resources.
 - **FR-PLAY-03 (Synthetic Red-Teaming)**: The system shall provide "Magic" buttons to generate synthetic user queries (both feasible and infeasible) to stress-test model instruction following and hallucination resistance.
 - **FR-PLAY-04 (Robustness)**: The backend shall handle concurrent loading requests gracefully and report current model status to prevents state inconsistencies.
+- **FR-PLAY-05 (Conversation History)**: The system shall persist conversation history to disk (`data/sessions/`) and allow users to create new chats or resume previous ones via the sidebar.
+- **FR-PLAY-06 (Output Sanitization)**: The UI shall automatically strip internal control tokens (e.g., `<|wait|>`) from the assistant's response before displaying it to the user.
 
 ## Non-Functional Requirements
 

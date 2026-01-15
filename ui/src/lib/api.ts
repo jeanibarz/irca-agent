@@ -65,5 +65,24 @@ export const api = {
     ejectModel: async (): Promise<{ status: string, message: string }> => {
         const res = await axios.post(`${API_BASE}/model/eject`);
         return res.data;
+    },
+
+    listConversations: async (): Promise<{ id: string, title: string, updated_at: string }[]> => {
+        const res = await axios.get(`${API_BASE}/conversations`);
+        return res.data;
+    },
+
+    createConversation: async (): Promise<{ id: string, title: string }> => {
+        const res = await axios.post(`${API_BASE}/conversations`, { title: "New Chat" });
+        return res.data;
+    },
+
+    getConversation: async (id: string): Promise<{ id: string, title: string, messages: Message[] }> => {
+        const res = await axios.get(`${API_BASE}/conversations/${id}`);
+        return res.data;
+    },
+
+    updateConversation: async (id: string, messages: Message[]): Promise<void> => {
+        await axios.post(`${API_BASE}/conversations/${id}`, { messages });
     }
 };

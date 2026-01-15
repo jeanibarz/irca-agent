@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from server.routers import generation, models, synthetic
+from server.routers import conversations, generation, models, synthetic
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(generation.router, prefix="/v1", tags=["generation"])
     app.include_router(models.router, prefix="/v1", tags=["models"])
     app.include_router(synthetic.router, prefix="/v1", tags=["synthetic"])
+    app.include_router(conversations.router, prefix="/v1", tags=["conversations"])
 
     @app.get("/health")
     async def health_check() -> dict[str, str]:

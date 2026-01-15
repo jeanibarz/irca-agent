@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { Model, FunctionDefinition } from '../lib/api';
-import { Settings, Cpu, Activity, Wrench } from 'lucide-react';
+import { Settings, Cpu, Activity, Wrench, History as HistoryIcon, MessageSquare } from 'lucide-react';
 
 interface SidebarProps {
     models: Model[];
@@ -18,10 +18,15 @@ interface SidebarProps {
     isLoading: boolean;
     loadedModelId: string | null;
     tools: FunctionDefinition[];
+    history: { id: string, title: string, updated_at: string }[];
+    currentConversationId: string | null;
+    onSelectConversation: (id: string) => void;
+    onNewChat: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-    models, selectedModelId, onSelectModel, config, onConfigChange, onLoadModel, onEjectModel, isLoading, loadedModelId, tools
+    models, selectedModelId, onSelectModel, config, onConfigChange, onLoadModel, onEjectModel, isLoading, loadedModelId, tools,
+    history, currentConversationId, onSelectConversation, onNewChat
 }) => {
     return (
         <div className="w-80 h-full bg-[#1e1e1e] border-r border-white/5 flex flex-col">
@@ -34,6 +39,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div className="p-4 space-y-6 flex-1 overflow-y-auto">
+
+                {/* History Section */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <HistoryIcon size={14} /> Recent
+                        </label>
+                        <button
+                            onClick={onNewChat}
+                            className="bg-white/5 hover:bg-white/10 text-xs px-2 py-1 rounded flex items-center gap-1 text-gray-300 transition-colors"
+                        >
+                            <MessageSquare size={12} /> New
+                        </button>
+                    </div>
+
+                    <div className="space-y-1 max-h-40 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+                        {history.length === 0 && <div className="text-xs text-gray-600 italic px-2">No history</div>}
+                        {history.map(h => (
+                            <button
+                                key={h.id}
+                                onClick={() => onSelectConversation(h.id)}
+                                className={`w-full text-left text-xs px-3 py-2 rounded truncate transition-colors ${currentConversationId === h.id
+                                        ? 'bg-blue-500/20 text-blue-200 border border-blue-500/20'
+                                        : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                                    }`}
+                                title={h.title}
+                            >
+                                {h.title}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="border-t border-white/5 pt-4"></div>
+
                 {/* Model Selection */}
                 <div className="space-y-3">
                     <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">

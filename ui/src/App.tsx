@@ -50,6 +50,10 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadedModelId, setLoadedModelId] = useState<string | null>(null);
 
+  // History State
+  const [history, setHistory] = useState<{ id: string, title: string, updated_at: string }[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+
   const [config, setConfig] = useState({
     temperature: 0.7,
     maxTokens: 4096,
@@ -58,8 +62,9 @@ function App() {
 
   useEffect(() => {
     loadModels();
+    loadHistory();
     fetchCurrentModel();
-    // Poll every 5s to keep state in sync
+    // Poll every 3s to keep state in sync
     const interval = setInterval(fetchCurrentModel, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -67,7 +72,6 @@ function App() {
   const fetchCurrentModel = async () => {
     try {
       const current = await api.getCurrentModel();
-      // Prefer adapter_id if present, else base_model_id
       setLoadedModelId(current.adapter_id || current.base_model_id);
     } catch (e) {
       // quiet fail on poll
@@ -81,6 +85,36 @@ function App() {
       if (list.length > 0) setSelectedModelId(list[0].path);
     } catch (e) {
       console.error("Failed to list models", e);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const list = await api.listConversations();
+      setHistory(list);
+    } catch (e) {
+      console.error("Failed to load history", e);
+    }
+  };
+
+  const handleNewChat = async () => {
+    try {
+      const conv = await api.createConversation();
+      setMessages([]);
+      setCurrentConversationId(conv.id);
+      await loadHistory();
+    } catch (e) {
+      console.error("Failed to create chat", e);
+    }
+  };
+
+  const handleSelectConversation = async (id: string) => {
+    try {
+      const conv = await api.getConversation(id);
+      setMessages(conv.messages);
+      setCurrentConversationId(conv.id);
+    } catch (e) {
+      console.error("Failed to load conversation", e);
     }
   };
 
@@ -120,10 +154,30 @@ function App() {
   };
 
   const handleSendMessage = async (content: string) => {
+    let distinctId = currentConversationId;
+
+    // Auto-create chat if none exists
+    if (!distinctId) {
+      try {
+        const conv = await api.createConversation();
+        distinctId = conv.id;
+        setCurrentConversationId(distinctId);
+      } catch (e) {
+        console.error("Failed to create implicit chat", e);
+        alert("Failed to start conversation.");
+        return;
+      }
+    }
+
     const userMsg: Message = { role: 'user', content };
     const newHistory = [...messages, userMsg];
     setMessages(newHistory);
     setIsGenerating(true);
+
+    // Save interim
+    if (distinctId) {
+      api.updateConversation(distinctId, newHistory).catch(console.error);
+    }
 
     try {
       const response = await api.generate({
@@ -134,7 +188,17 @@ function App() {
         top_p: config.topP
       });
 
-      setMessages([...newHistory, { role: 'assistant', content: response.content }]);
+      // FIX: Trim <|wait|> from response content before displaying
+      const cleanContent = response.content.replace(/<\|wait\|>/g, '').trim();
+
+      const assistantMsg: Message = { role: 'assistant', content: cleanContent };
+      const finalHistory = [...newHistory, assistantMsg];
+      setMessages(finalHistory);
+
+      if (distinctId) {
+        await api.updateConversation(distinctId, finalHistory);
+        loadHistory(); // Update titles
+      }
     } catch (e) {
       console.error("Generation failed", e);
       setMessages([...newHistory, { role: 'assistant', content: "Error: Generation failed. Is the model loaded?" }]);
@@ -156,6 +220,10 @@ function App() {
         isLoading={isLoading}
         loadedModelId={loadedModelId}
         tools={DUMMY_TOOLS}
+        history={history}
+        currentConversationId={currentConversationId}
+        onSelectConversation={handleSelectConversation}
+        onNewChat={handleNewChat}
       />
       <main className="flex-1 h-full min-w-0">
         <ChatInterface

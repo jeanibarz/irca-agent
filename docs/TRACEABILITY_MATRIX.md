@@ -19,6 +19,8 @@ This matrix maps Functional Requirements (FR) to their Implementation components
 | **FR-PLAY-02** | Model Management | `src/server/model_manager.py`<br>`src/server/routers/models.py`<br>`ui/src/components/Sidebar.tsx` | Manual Verification (UI Buttons) |
 | **FR-PLAY-03** | Synthetic Red-Teaming | `src/server/routers/synthetic.py`<br>`ui/src/components/ChatInterface.tsx` | Manual Verification (Magic Buttons) |
 | **FR-PLAY-04** | Robustness | `src/server/model_manager.py` (Async locks) | Manual Verification (Concurrent clicking) |
+| **FR-PLAY-05** | Conversation History | `src/server/routers/conversations.py`<br>`ui/src/App.tsx` | Manual Verification (Refresh page) |
+| **FR-PLAY-06** | Output Sanitization | `ui/src/App.tsx` (regex replace) | Manual Verification (Generate trace) |
 
 *> Symbol denotes components/tests that are logically inferred to exist or should exist based on the architecture analysis. Files marked with `*` in the Test column indicate recommended coverage gaps if not already present.
 

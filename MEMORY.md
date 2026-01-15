@@ -2,57 +2,56 @@
 # Project Session Memory
 
 **Last Updated:** 2026-01-15
-**Last Commit:** `feat(core): robustness for model loading, ejection, visibility and synthetic testing` - Implemented robust model management and synthetic query generation.
+**Last Commit:** `feat(ui): add conversation history and token sanitization` - Implemented persistent chat history and output cleaning.
 **Branch:** main
-**Task ID:** playground-v1
+**Task ID:** playground-v1-complete
 
 ---
 
 ## Current Task
 
 **Goal:** Implement Interactive Playground and Evaluation Suite (RFC-001)
-**Status:** ✅ Completed (Phase 1)
+**Status:** ✅ Completed (Phase 1 & History)
 **Started:** 2026-01-15
 **Task Type:** feature
 
 ### What I Did
 
 1.  **Frontend Polish**:
-    *   Migrated to Tailwind CSS v4 to fix build errors (`@import "tailwindcss"`).
-    *   Improved UI design (dark/glassmorphism) and readability (dropdown contrast).
-    *   Added **Available Tools** section to Sidebar to visualize capabilities.
+    *   Migrated to Tailwind CSS v4.
+    *   Added **Available Tools** to Sidebar.
+    *   Implemented **Conversation History** list in Sidebar.
+    *   Implemented **"New Chat"** functionality.
+    *   **Output Sanitization**: Automatically strips`<|wait|>` and other control tokens from the display while preserving them in the backend generation logic if needed (though currently we just clean the display).
 
 2.  **Synthetic Red-Teaming**:
-    *   Implemented `POST /v1/synthetic/query` endpoint.
-    *   Added **"Generate Feasible Query"** and **"Generate Infeasible Query"** buttons to Chat Interface.
-    *   This allows rapid stress-testing of the model's tool calling and refusal logic.
+    *   Implemented `POST /v1/synthetic/query` endpoint with "Feasible" and "Infeasible" modes.
+    *   Fixed bug in `synthetic.py` where `max_token` was passed instead of `max_new_tokens`.
 
-3.  **Robust Model Management**:
-    *   Implemented proper locking in `ModelManager` (asyncio locks).
-    *   Made `load_model` and `generate` async/non-blocking using `asyncio.to_thread`.
-    *   Added `POST /v1/model/eject` and `GET /v1/model/current` endpoints.
-    *   Updated UI to show loaded status badges ("LOADED") and allow ejection.
+3.  **Robust Backend**:
+    *   **Async/Locking**: Prevented race conditions in model loading.
+    *   **Persistence**: Created `src/server/routers/conversations.py` to save/load chats from `data/sessions/`.
+    *   **Ejection**: Allowed manual GPU memory clearing.
 
 4.  **Documentation**:
-    *   Updated `docs/REQUIREMENTS.md` with new FR-PLAY requirements.
-    *   Updated `docs/TRACEABILITY_MATRIX.md` with manual verification links.
+    *   Updated `docs/REQUIREMENTS.md` with `FR-PLAY-05` (History) and `FR-PLAY-06` (Sanitization).
+    *   Updated `docs/TRACEABILITY_MATRIX.md`.
 
 ### Key Findings
 
--   **FastAPI Async Blocking**: Calling synchronous CPU/GPU heavy functions (like `transformers.generate`) inside an `async def` endpoint blocks the entire event loop, freezing other requests (like health checks or status polling). Always use `await asyncio.to_thread` for these operations.
--   **Tailwind v4 Migration**: The new Tailwind version requires specific CSS import syntax (`@import "tailwindcss"`) and no longer uses `@tailwind base/components/utilities` or `@layer`/`@apply` in the same way for basic setups without PostCSS plugins being correctly configured for legacy support.
--   **React Polling**: Simple `setInterval` polling in `useEffect` is sufficient for local development status updates (like checking if a model is loaded) without complex websocket setups.
+-   **FastAPI Async Blocking**: Calling synchronous CPU/GPU heavy functions inside `async def` endpoints blocks the event loop. Use `asyncio.to_thread`.
+-   **Token Leaks**: Models trained with specific control tokens (like `<|wait|>`) often output them. Frontend sanitization is necessary to provide a clean UX.
+-   **Local Persistence**: Quick file-based JSON storage is an effective way to adding "Memory" to a local playground without setting up a full database.
 
 ### Files Created/Modified
 
 | File | Purpose |
 |------|---------|
-| `ui/src/components/Sidebar.tsx` | UI component for model selection and tools display. |
-| `ui/src/components/ChatInterface.tsx` | Main chat UI with synthetic query buttons. |
-| `ui/src/App.tsx` | Main application state (models, messages, config). |
-| `src/server/routers/synthetic.py` | Backend endpoint for synthetic query generation. |
-| `src/server/model_manager.py` | Core model logic (Async updates, Locking). |
-| `docs/REQUIREMENTS.md` | Requirement definitions. |
+| `src/server/routers/conversations.py` | Backend logic for chat persistence. |
+| `ui/src/App.tsx` | Main state machine (History, Models, Chat). |
+| `ui/src/components/Sidebar.tsx` | UI for History list and Model control. |
+| `ui/src/lib/api.ts` | API client additions for History. |
+| `docs/REQUIREMENTS.md` | New requirements logged. |
 
 ---
 
@@ -60,36 +59,28 @@
 
 ### Completed This Session
 - ✅ Configured separate Frontend (Vite) and Backend (FastAPI).
-- ✅ Implemented Tool visualization.
-- ✅ Implemented Synthetic Query Generation (Red-Teaming).
+- ✅ Implemented Tool visualization and Synthetic Red-Teaming.
 - ✅ Implemented Robust Backend (Async, Eject, Lock).
-- ✅ Updated Documentation (Requirements, Traceability).
+- ✅ Implemented Persistent Conversation History.
+- ✅ Implemented Output Token Sanitization.
 
 ### Task Validation
 
--   **Command**: `npm run dev` (Frontend) + `python -m src.server.main` (Backend).
+-   **Command**: `npm run dev` + `python -m src.server.main`.
 -   **Result**:
-    -   UI Loads without errors.
-    -   Models list correctly.
-    -   Loading locks UI prevents concurrent loads.
-    -   Eject works and clears memory.
-    -   Synthetic queries generate feasible/infeasible prompts correctly.
-
----
-
-## Key Decisions Made
-
-1.  **Synthetic Query via Model**: Instead of hardcoding prompts, we use the *currently loaded model* to generate synthetic user queries. This acts as a self-check (can the model understand its own tools?) and ensures variety.
-2.  **Explicit "Eject"**: Added explicit manual memory management because GPU memory is scarce (consumer hardware target), allowing users to switch models cleanly.
-3.  **Asyncio for GPU Ops**: Wrap blocking GPU calls in threads to ensure the web server remains responsive (e.g., capable of accepting a "Cancel" or "Status" request, though cancellation isn't fully implemented yet, status is).
+    -   Chat history survives page reloads.
+    -   "New Chat" clears context correctly.
+    -   `<|wait|>` is removed from "Assistant" messages in the UI.
 
 ---
 
 ## Next Steps
 
-1.  **Refactor Server**: Organize `src/server` structure if it grows (currently good).
-2.  **Implement "Judge"**: Add the LLM-as-a-Judge automated evaluation (RFC Phase 2).
-3.  **Function Execution Sandbox**: Actually execute the `get_weather` calls using a sandboxed environment (Python Docker sandbox).
+1.  **RFC Phase 2: Function Execution Sandbox**:
+    -   Current "Tools" are dummy definitions.
+    -   Goal: Actually execute python code (e.g. `get_stock_price`) in a safe sandbox (Docker/gVisor).
+2.  **LLM-as-a-Judge**:
+    -   Automate the "synthetic query -> generation -> verify" loop using a stronger model (or the same model) to grade the response.
 
 ---
 

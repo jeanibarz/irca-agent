@@ -55,7 +55,7 @@ async def generate_synthetic_query(req: SyntheticQueryRequest) -> SyntheticQuery
     try:
         output = await manager.generate(
             prompt=prompt,
-            max_tokens=100,
+            max_new_tokens=100,
             temperature=0.8,
             top_p=0.95,
             stop_tokens=["\n", "[/INST]", "User:", "Assistant:"],

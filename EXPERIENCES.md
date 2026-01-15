@@ -63,6 +63,7 @@
 - **Dataset Generation**: Datasets are stored in `datasets/` directory.
 - **Frontend**: Located in `ui/`. Built with Vite + React + Tailwind v4. Runs on port 3001 (default).
 - **Backend API**: FastAPI app in `src/server/`. Uses `uvicorn`.
+- **Session Persistence**: Simple file-based JSON storage (`data/sessions/`) is sufficient for local playground history.
 
 ---
 
