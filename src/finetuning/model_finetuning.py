@@ -21,9 +21,127 @@ import trl
 import datasets  # type: ignore
 from config import get_settings
 from core import prompt_builder, utils
+from datasets import Dataset  # type: ignore
 
 # Configure logger
+# Configure logger
 logger = logging.getLogger(__name__)
+
+
+def augment_dataset(original_dataset: Dataset, config: dict[str, Any]) -> Dataset:
+    """
+    Diversify the dataset by translating a subset of examples.
+    Does NOT increase total dataset size (Replacement logic).
+    Reasoning traces remain in English.
+    """
+    if not config.get("augment_enabled"):
+        return original_dataset
+
+    import copy
+    import random
+
+    from core.generation.constants import FINAL_ANSWER_PROMPT
+    from core.prompt_builder import build_full_prompt, parse_corrected_agent_trace
+    from dataset_generation.translator import TranslationService
+
+    languages = config["augment_languages"]
+    total_ratio = config["augment_ratio"]
+    is_dynamic = config.get("augment_dynamic", False)
+
+    logger.info(f"Diversifying dataset (Ratio: {total_ratio}, Languages: {languages}, Dynamic: {is_dynamic})")
+
+    def transform_batch(batch: dict, batch_indices: list[int] | None = None) -> dict:
+        # Create a local copy to avoid modifying original if needed
+        # But 'batch' is already a copy for map/set_transform
+
+        # Decide which items to translate in THIS batch
+        lang_groups: dict[str, list[int]] = {}
+
+        for i in range(len(batch["corrected_agent_trace"])):
+            # If we have indices (static mode), we can use them for determinism
+            # If not (dynamic/iterable), we use random.random()
+            should_diversify = False
+            if not is_dynamic and batch_indices is not None:
+                # Deterministic based on global index + seed
+                random.seed(config.get("augment_seed", 42) + batch_indices[i])
+                should_diversify = random.random() < total_ratio
+                lang = random.choice(languages) if should_diversify else None
+            else:
+                # Stochastic (dynamic mode or missing indices)
+                should_diversify = random.random() < total_ratio
+                lang = random.choice(languages) if should_diversify else None
+
+            if lang:
+                if lang not in lang_groups:
+                    lang_groups[lang] = []
+                lang_groups[lang].append(i)
+
+        if not lang_groups:
+            return batch
+
+        # Process each language group
+        for lang, local_indices in lang_groups.items():
+            translator = TranslationService(
+                target_lang=lang,
+                model_name_template=config.get("augment_model_name_template", "Helsinki-NLP/opus-mt-en-{lang}"),
+                max_length=config.get("augment_max_length", 512),
+            )
+
+            # Extract texts
+            query_texts = []
+            answer_mapping = []  # (local_idx, answer_text_or_None)
+            parsed_data = []  # Store parts for reconstruction
+
+            for local_idx in local_indices:
+                row_list = batch["corrected_agent_trace"][local_idx]
+                full_prompt = row_list[0]["value"].replace("\r\n", "\n")
+                parts = parse_corrected_agent_trace(full_prompt)
+                parsed_data.append(parts)
+
+                query_texts.append(parts["user_query"])
+
+                comp = parts["assistant_completion"]
+                if FINAL_ANSWER_PROMPT in comp:
+                    parts_split = comp.rsplit(FINAL_ANSWER_PROMPT, 1)
+                    answer_mapping.append(parts_split[1].strip())
+                else:
+                    answer_mapping.append(None)
+
+            # Translate (using cached model in TranslationService)
+            trans_queries = translator.translate_batch(query_texts)
+
+            ans_to_trans = [a for a in answer_mapping if a is not None]
+            trans_answers = translator.translate_batch(ans_to_trans) if ans_to_trans else []
+
+            # Reconstruct
+            ans_idx = 0
+            for i, local_idx in enumerate(local_indices):
+                parts = parsed_data[i]
+                parts["user_query"] = trans_queries[i]
+
+                if answer_mapping[i] is not None:
+                    original_comp = parts["assistant_completion"]
+                    pre, _ = original_comp.rsplit(FINAL_ANSWER_PROMPT, 1)
+                    parts["assistant_completion"] = f"{pre}{FINAL_ANSWER_PROMPT}{trans_answers[ans_idx]}"
+                    ans_idx += 1
+
+                new_full_prompt = build_full_prompt(parts)
+                new_row = copy.deepcopy(batch["corrected_agent_trace"][local_idx])
+                new_row[0]["value"] = new_full_prompt
+                batch["corrected_agent_trace"][local_idx] = new_row
+
+        return batch
+
+    if is_dynamic:
+        # Truly online: transform happens every time the item is accessed.
+        # Works best with num_workers > 0 in Trainer/DataLoader.
+        iterable_ds = original_dataset.to_iterable_dataset()
+        return iterable_ds.map(transform_batch, batched=True, batch_size=8)
+
+    # Static (Offline) Diversification
+    return original_dataset.map(
+        transform_batch, batched=True, batch_size=8, load_from_cache_file=False, desc="Diversifying dataset"
+    )
 
 
 def setup_logging(level: int = logging.DEBUG) -> logging.Logger:
@@ -156,6 +274,8 @@ def setup_trainer(
         warmup_ratio=0.03,
         lr_scheduler_type="constant",
         disable_tqdm=False,
+        dataloader_num_workers=4 if config.get("augment_dynamic") else 0,
+        dataloader_pin_memory=True if config.get("augment_dynamic") else False,
     )
 
     return trl.SFTTrainer(
@@ -164,7 +284,9 @@ def setup_trainer(
         peft_config=peft_config,
         max_seq_length=config.get("max_seq_length", 4096),
         tokenizer=tokenizer,
-        packing=True,
+        packing=not config.get(
+            "augment_dynamic"
+        ),  # Disable packing in dynamic mode to allow real-time per-sample variety
         formatting_func=prompt_builder.format_instruction,
         args=training_args,
     )
@@ -200,6 +322,41 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Push trained model to HuggingFace Hub",
     )
+    parser.add_argument(
+        "--augment",
+        action="store_true",
+        help="Enable augmentation",
+    )
+    parser.add_argument(
+        "--augment_lang",
+        nargs="+",
+        help="Languages for augmentation (e.g. fr es)",
+    )
+    parser.add_argument(
+        "--augment_ratio",
+        type=float,
+        help="Augmentation ratio",
+    )
+    parser.add_argument(
+        "--augment_model_template",
+        type=str,
+        help="Translation model name template",
+    )
+    parser.add_argument(
+        "--augment_max_length",
+        type=int,
+        help="Maximum translation length",
+    )
+    parser.add_argument(
+        "--augment_seed",
+        type=int,
+        help="Random seed for diversification",
+    )
+    parser.add_argument(
+        "--augment_dynamic",
+        action="store_true",
+        help="Enable online diversification (slower, but varies across runs)",
+    )
     return parser.parse_args()
 
 
@@ -226,6 +383,20 @@ def main() -> None:
         config["learning_rate"] = args.learning_rate
     if args.push_to_hub:
         config["push_to_hub"] = True
+    if args.augment:
+        config["augment_enabled"] = True
+    if args.augment_lang:
+        config["augment_languages"] = args.augment_lang
+    if args.augment_ratio:
+        config["augment_ratio"] = args.augment_ratio
+    if args.augment_model_template:
+        config["augment_model_name_template"] = args.augment_model_template
+    if args.augment_max_length:
+        config["augment_max_length"] = args.augment_max_length
+    if args.augment_seed:
+        config["augment_seed"] = args.augment_seed
+    if args.augment_dynamic:
+        config["augment_dynamic"] = True
 
     logger.info(f"Training configuration: {config}")
 
@@ -246,6 +417,10 @@ def main() -> None:
     try:
         dataset = datasets.load_dataset(config["dataset"])  # type: ignore
         logger.info(f"Dataset loaded: {len(dataset['train'])} training examples")
+
+        # Augment dataset
+        dataset["train"] = augment_dataset(dataset["train"], config)
+
     except Exception as e:
         logger.critical(f"Failed to load dataset: {e}")
         sys.exit(1)

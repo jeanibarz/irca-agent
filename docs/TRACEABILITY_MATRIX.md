@@ -6,7 +6,7 @@ This matrix maps Functional Requirements (FR) to their Implementation components
 |--------|--------------------------|----------------------------|-------------------|
 | **FR-GEN-01** | Trace Generation Loop | `src/core/generation/trace_generator.py`<br>`src/core/domain/trace.py` | `tests/unit/test_trace_generator.py`*<br>`tests/integration/test_full_loop.py`* |
 | **FR-GEN-02** | Guidance Constraints | `src/core/generation/step_generators.py` | `tests/unit/test_step_generators.py`* |
-| **FR-GEN-03** | Function Removal | `src/core/generation/trace_generator.py` (augment logic)<br>`src/core/utils.py` | `tests/unit/test_function_augmentation.py`* |
+| **FR-GEN-03** | Function Removal | `src/core/generation/trace_generator.py` (augment logic)<br>`src/core/utils.py` | `tests/unit/test_function_augmentation.py` |
 | **FR-GEN-04** | Function Shuffling | `src/core/utils.py` -> `shuffle_json_functions` | `tests/unit/test_utils.py` |
 | **FR-GEN-05** | Prompt Randomization | `src/core/prompt_builder.py` | `tests/unit/test_prompt_builder.py` |
 | **FR-CLI-01** | Command Interface | `src/cli/main.py`<br>`src/cli/commands/*` | Manual Verification / CLI Smoke Tests |
@@ -15,13 +15,20 @@ This matrix maps Functional Requirements (FR) to their Implementation components
 | **FR-FT-02** | Model Presets | `src/config/settings.py` -> `get_model_config` | `tests/unit/test_settings.py`* |
 | **FR-FT-03** | Configurable Params | `src/config/settings.py` | `tests/unit/test_settings.py`* |
 | **FR-DATA-01** | HF Integration | `src/dataset_generation/hf_utils.py`*<br>`src/cli/commands/dataset.py` | Manual Integration Test |
+| **FR-DATA-02** | Argilla Integration | `src/dataset_generation/hf_utils.py` | Manual Integration Test |
+| **FR-DATA-03** | Online Diversification | `src/finetuning/model_finetuning.py` | `tests/unit/test_augmentation.py` |
+| **FR-DATA-04** | Stochastic Config | `src/config/settings.py` | `tests/unit/test_augmentation.py` |
+| **FR-DATA-05** | Feature Flipping | `src/finetuning/model_finetuning.py` | `tests/unit/test_augmentation.py` |
+| **FR-DATA-06** | Parallel Execution | `src/finetuning/model_finetuning.py` | Integration Training Test |
 | **FR-PLAY-01** | Interactive Chat | `ui/src/App.tsx`<br>`ui/src/components/ChatInterface.tsx`<br>`src/server/routers/generation.py` | Manual Verification (Browser) |
 | **FR-PLAY-02** | Model Management | `src/server/model_manager.py`<br>`src/server/routers/models.py`<br>`ui/src/components/Sidebar.tsx` | Manual Verification (UI Buttons) |
 | **FR-PLAY-03** | Synthetic Red-Teaming | `src/server/routers/synthetic.py`<br>`ui/src/components/ChatInterface.tsx` | Manual Verification (Magic Buttons) |
 | **FR-PLAY-04** | Robustness | `src/server/model_manager.py` (Async locks) | Manual Verification (Concurrent clicking) |
 | **FR-PLAY-05** | Conversation History | `src/server/routers/conversations.py`<br>`ui/src/App.tsx` | Manual Verification (Refresh page) |
 | **FR-PLAY-06** | Output Sanitization | `ui/src/App.tsx` (regex replace) | Manual Verification (Generate trace) |
-| **FR-PLAY-07** | Dual Model Support | - | Not Implemented ⚠️ |
+| **FR-PLAY-09** | Conversation Deletion | `src/server/routers/conversations.py`<br>`ui/src/components/Sidebar.tsx` | `tests/unit/test_conversations.py`* |
+| **FR-PLAY-08** | Reference Highlighting | `ui/src/components/TraceRenderers.tsx` | Manual Verification |
+| **NFR-USE-02** | Loading Feedback | `src/server/events.py`<br>`src/server/model_manager.py`<br>`ui/src/App.tsx` | Manual Verification (Logs/UI) |
 
 *> Symbol denotes components/tests that are logically inferred to exist or should exist based on the architecture analysis. Files marked with `*` in the Test column indicate recommended coverage gaps if not already present.
 

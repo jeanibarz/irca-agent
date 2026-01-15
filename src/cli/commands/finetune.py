@@ -55,6 +55,29 @@ def finetune() -> None:
     default=None,
     help="Dataset to use for training (HuggingFace ID)",
 )
+@click.option(
+    "--augment",
+    is_flag=True,
+    help="Enable multilingual diversification",
+)
+@click.option(
+    "--augment-lang",
+    "-al",
+    multiple=True,
+    help="Target languages (e.g. fr, es)",
+)
+@click.option(
+    "--augment-ratio",
+    "-ar",
+    type=float,
+    default=None,
+    help="Diversification ratio (0.0 to 1.0)",
+)
+@click.option(
+    "--augment-dynamic",
+    is_flag=True,
+    help="Enable real-time online diversification",
+)
 @click.pass_context
 def run(
     ctx: click.Context,
@@ -63,6 +86,10 @@ def run(
     learning_rate: float | None,
     push_to_hub: bool,
     dataset: str | None,
+    augment: bool,
+    augment_lang: tuple[str, ...],
+    augment_ratio: float | None,
+    augment_dynamic: bool,
 ) -> None:
     """
     Run model finetuning.
@@ -116,6 +143,14 @@ def run(
         config["push_to_hub"] = True
     if dataset:
         config["dataset"] = dataset
+    if augment:
+        config["augment_enabled"] = True
+    if augment_lang:
+        config["augment_languages"] = list(augment_lang)
+    if augment_ratio is not None:
+        config["augment_ratio"] = augment_ratio
+    if augment_dynamic:
+        config["augment_dynamic"] = True
 
     click.echo(f"   Dataset: {config['dataset']}")
     click.echo(f"   Base model: {config['base_model']}")
@@ -198,6 +233,14 @@ def run(
             train_dataset = loaded_dataset
 
         click.echo(f"✓ Dataset loaded: {len(train_dataset)} examples")
+
+        # Apply Diversification
+        if config.get("augment_enabled"):
+            from finetuning.model_finetuning import augment_dataset
+
+            train_dataset = augment_dataset(train_dataset, config)
+            click.echo(f"✓ Dataset diversified: {len(train_dataset)} examples")
+
     except Exception as e:
         click.secho(f"Error loading dataset: {e}", fg="red", err=True)
         sys.exit(1)

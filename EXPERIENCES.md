@@ -34,13 +34,17 @@
 | Missing `sentencepiece` for Mistral models | Add `sentencepiece` to `pyproject.toml` dependencies. | 2026-01-15 |
 | `TypeError: SFTTrainer.__init__() got an unexpected keyword argument` | Check if the argument belongs in `SFTConfig` instead of `__init__`. | 2026-01-15 |
 | Mistral v3 Finetuning Instability | High Learning Rate (1e-3) causes gradient explosion. Use `2e-4` or lower. Also ensure `tokenizer.padding_side='right'`. | 2026-01-15 |
-| Async Endpoint Blocking | Calling sync functions (like `model.generate`) directly in `async def` endpoints blocks the whole server. Use `await asyncio.to_thread(...)`. | 2026-01-15 |
+| Mocking Local Imports inside Functions | Use the full source path `patch("module.submodule.ClassName")` instead of `patch("module_using_it.ClassName")` when the import is performed inside the function body. | 2026-01-15 |
+| Model `.to(device)` in Tests | When mocking PyTorch-like models, ensure `.to()` returns `self` (the mock instance) to avoid breaking chain-calls to methods like `.generate()`. | 2026-01-15 |
 
 ---
 
 ## Patterns That Work
 <!-- Successful approaches to reuse -->
 
+- **Online Data Diversification**: Using `IterableDataset` with `.map(batched=True)` and `num_workers > 0` in the `DataLoader` allows performing heavy transformations (like translation) without bottlenecking the GPU training.
+- **Class-Level Model Caching**: When using multiprocessing for data loading, class-level caches for local models ensure each worker only loads the model once, reducing startup overhead.
+- **Reference Highlighting**: Delimiting tool citations in final answers allows for clean UI visualization while maintaining raw text readability.
 - **Local Dataset Loading**: Using `datasets.load_from_disk(path)` when `os.path.exists(path)` allows using locally generated datasets without pushing to Hub.
 - **Handling DatasetDict**: Always check if loaded dataset is `DatasetDict` or `Dataset` and extract `train` split if necessary to avoid `KeyError` or type errors in Trainer.
 - **Stable QLoRA LR**: For 7B models (like Mistral), a learning rate of `2e-4` is much more stable than `1e-3`.

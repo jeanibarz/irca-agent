@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { Model, FunctionDefinition } from '../lib/api';
 import { Settings, Cpu, Activity, Wrench, History as HistoryIcon, MessageSquare } from 'lucide-react';
 
@@ -13,21 +13,46 @@ interface SidebarProps {
         topP: number;
     };
     onConfigChange: (key: string, value: number) => void;
-    onLoadModel: () => void;
-    onEjectModel: () => void;
+    onLoadModel: (alias: string) => void;
+    onEjectModel: (alias: string) => void;
     isLoading: boolean;
-    loadedModelId: string | null;
+    loadedModels: Record<string, string>; // alias -> model_id
     tools: FunctionDefinition[];
     history: { id: string, title: string, updated_at: string }[];
     currentConversationId: string | null;
     onSelectConversation: (id: string) => void;
     onNewChat: () => void;
+    onDeleteConversation: (id: string) => void;
+    loadingStatus: string | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-    models, selectedModelId, onSelectModel, config, onConfigChange, onLoadModel, onEjectModel, isLoading, loadedModelId, tools,
-    history, currentConversationId, onSelectConversation, onNewChat
+    models, selectedModelId, onSelectModel, config, onConfigChange, onLoadModel, onEjectModel, isLoading, loadedModels, tools,
+    history, currentConversationId, onSelectConversation, onNewChat, onDeleteConversation, loadingStatus
 }) => {
+    // Single model mode
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setDeletingId(id);
+    };
+
+    const confirmDelete = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        onDeleteConversation(id);
+        setDeletingId(null);
+    };
+
+    const cancelDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setDeletingId(null);
+    };
+
+    // Always check 'default' alias
+    const isCurrentLoaded = loadedModels['default'] === selectedModelId;
+    const currentLoadedId = loadedModels['default'];
+
     return (
         <div className="w-80 h-full bg-[#1e1e1e] border-r border-white/5 flex flex-col">
             <div className="p-4 border-b border-white/5">
@@ -57,17 +82,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="space-y-1 max-h-40 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
                         {history.length === 0 && <div className="text-xs text-gray-600 italic px-2">No history</div>}
                         {history.map(h => (
-                            <button
+                            <div
                                 key={h.id}
                                 onClick={() => onSelectConversation(h.id)}
-                                className={`w-full text-left text-xs px-3 py-2 rounded truncate transition-colors ${currentConversationId === h.id
-                                        ? 'bg-blue-500/20 text-blue-200 border border-blue-500/20'
-                                        : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                                className={`group w-full text-left text-xs px-3 py-2 rounded flex justify-between items-center cursor-pointer transition-colors ${currentConversationId === h.id
+                                    ? 'bg-blue-500/20 text-blue-200 border border-blue-500/20'
+                                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
                                     }`}
                                 title={h.title}
                             >
-                                {h.title}
-                            </button>
+                                <span className="truncate flex-1">{h.title}</span>
+                                {deletingId === h.id ? (
+                                    <div className="flex items-center gap-1 ml-2">
+                                        <button
+                                            onClick={(e) => confirmDelete(e, h.id)}
+                                            className="text-red-400 hover:text-red-300 font-bold px-1"
+                                        >
+                                            ✓
+                                        </button>
+                                        <button
+                                            onClick={cancelDelete}
+                                            className="text-gray-500 hover:text-gray-400 px-1"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={(e) => handleDeleteClick(e, h.id)}
+                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-all"
+                                        title="Delete"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
                         ))}
                     </div>
                 </div>
@@ -76,10 +125,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {/* Model Selection */}
                 <div className="space-y-3">
-                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                        <Cpu size={14} /> Model
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2 mb-2">
+                        <Cpu size={14} /> Model Configuration
                     </label>
-                    <div className="space-y-2">
+
+                    {/* Model Config Box */}
+                    <div className="space-y-2 p-3 bg-black/10 rounded border border-white/5">
+                        <div className="text-xs text-gray-400 mb-1 flex justify-between">
+                            <span>Main Model</span>
+                            {currentLoadedId && (
+                                <span className="text-green-400 font-mono text-[10px] px-1 bg-green-900/20 rounded border border-green-900/30">
+                                    ACTIVE
+                                </span>
+                            )}
+                        </div>
+
+                        {isLoading && loadingStatus && (
+                            <div className="text-[10px] text-blue-400 font-mono animate-pulse mb-1">
+                                &gt; {loadingStatus}
+                            </div>
+                        )}
+
                         <select
                             value={selectedModelId}
                             onChange={(e) => onSelectModel(e.target.value)}
@@ -89,21 +155,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             {models.map(m => (
                                 <option key={m.path} value={m.path}>
                                     {m.id} ({m.type})
-                                    {loadedModelId === m.path ? ' [LOADED]' : ''}
                                 </option>
                             ))}
                         </select>
                         <div className="flex gap-2">
                             <button
-                                onClick={onLoadModel}
-                                disabled={isLoading || !selectedModelId || loadedModelId === selectedModelId}
-                                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold py-2 rounded transition-colors"
+                                onClick={() => onLoadModel('default')}
+                                disabled={isLoading || !selectedModelId || isCurrentLoaded}
+                                className={`flex-1 text-xs font-bold py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-500 text-white`}
                             >
-                                {isLoading ? 'LOADING...' : (loadedModelId === selectedModelId ? 'LOADED' : 'LOAD')}
+                                {isLoading ? 'LOADING...' : (isCurrentLoaded ? 'LOADED' : 'LOAD')}
                             </button>
-                            {loadedModelId && (
+                            {currentLoadedId && (
                                 <button
-                                    onClick={onEjectModel}
+                                    onClick={() => onEjectModel('default')}
                                     disabled={isLoading}
                                     className="px-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 text-xs font-bold rounded transition-colors"
                                     title="Eject Model"
@@ -112,10 +177,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 </button>
                             )}
                         </div>
+                        {currentLoadedId && (
+                            <div className="text-[10px] text-gray-500 truncate mt-1">
+                                Loaded: {currentLoadedId}
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Parameters */}
+                {/* Parameters (Only for Agent strictly speaking, but keep global for now) */}
                 <div className="space-y-4">
                     <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                         <Settings size={14} /> Hyperparameters
@@ -189,7 +259,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Footer */}
             <div className="p-4 border-t border-white/5 text-xs text-gray-600 text-center">
-                v1.0.0 • Localhost
+                v1.1.0 • Localhost
             </div>
         </div>
     );

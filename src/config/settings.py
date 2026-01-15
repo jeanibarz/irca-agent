@@ -139,6 +139,41 @@ class Settings(BaseSettings):
     )
 
     # ===========================================
+    # Augmentation Configuration
+    # ===========================================
+    augment_enabled: bool = Field(
+        default=False,
+        description="Enable translation augmentation during training",
+    )
+    augment_languages: list[str] = Field(
+        default=["fr"],
+        description="List of target languages for augmentation (e.g. ['fr', 'es'])",
+    )
+    augment_ratio: float = Field(
+        default=0.5,
+        description="Ratio of dataset to augment with translations. If multiple languages, ratio is split among them.",
+        ge=0.0,
+        le=1.0,
+    )
+    augment_model_name_template: str = Field(
+        default="Helsinki-NLP/opus-mt-en-{lang}",
+        description="Template for translation model names (e.g. 'Helsinki-NLP/opus-mt-en-{lang}')",
+    )
+    augment_max_length: int = Field(
+        default=512,
+        description="Maximum length for translation input/output",
+        ge=64,
+    )
+    augment_seed: int = Field(
+        default=42,
+        description="Random seed for deterministic diversification",
+    )
+    augment_dynamic: bool = Field(
+        default=False,
+        description="If True, diversification happens in real-time during training (slower but more variety).",
+    )
+
+    # ===========================================
     # Model Presets
     # ===========================================
     default_model_type: Literal["mistral", "tinyllama", "qwen", "custom"] = Field(
@@ -241,6 +276,14 @@ class Settings(BaseSettings):
             "num_train_epochs": self.num_train_epochs,
             "learning_rate": self.learning_rate,
             "max_seq_length": self.max_seq_length,
+            # Augmentation
+            "augment_enabled": self.augment_enabled,
+            "augment_languages": self.augment_languages,
+            "augment_ratio": self.augment_ratio,
+            "augment_model_name_template": self.augment_model_name_template,
+            "augment_max_length": self.augment_max_length,
+            "augment_seed": self.augment_seed,
+            "augment_dynamic": self.augment_dynamic,
             # Paths
             "output_dir": str(self.finetuned_models_path / model_config["model_name"]),
         }

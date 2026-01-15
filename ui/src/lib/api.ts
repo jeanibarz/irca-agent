@@ -42,8 +42,8 @@ export const api = {
         return res.data;
     },
 
-    loadModel: async (baseModelId: string, adapterId?: string): Promise<{ status: string, message: string }> => {
-        const res = await axios.post(`${API_BASE}/model/load`, { base_model_id: baseModelId, adapter_id: adapterId });
+    loadModel: async (baseModelId: string, adapterId?: string, alias: string = "default"): Promise<{ status: string, message: string }> => {
+        const res = await axios.post(`${API_BASE}/model/load`, { base_model_id: baseModelId, adapter_id: adapterId, alias });
         return res.data;
     },
 
@@ -57,13 +57,13 @@ export const api = {
         return res.data;
     },
 
-    getCurrentModel: async (): Promise<{ base_model_id: string | null, adapter_id: string | null }> => {
+    getCurrentModel: async (): Promise<Record<string, { base: string, adapter: string | null }>> => {
         const res = await axios.get(`${API_BASE}/model/current`);
         return res.data;
     },
 
-    ejectModel: async (): Promise<{ status: string, message: string }> => {
-        const res = await axios.post(`${API_BASE}/model/eject`);
+    ejectModel: async (alias: string = "default"): Promise<{ status: string, message: string }> => {
+        const res = await axios.post(`${API_BASE}/model/eject`, { alias });
         return res.data;
     },
 
@@ -84,5 +84,9 @@ export const api = {
 
     updateConversation: async (id: string, messages: Message[]): Promise<void> => {
         await axios.post(`${API_BASE}/conversations/${id}`, { messages });
+    },
+
+    deleteConversation: async (id: string): Promise<void> => {
+        await axios.delete(`${API_BASE}/conversations/${id}`);
     }
 };

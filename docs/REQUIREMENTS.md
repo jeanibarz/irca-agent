@@ -22,6 +22,10 @@
 ### Dataset Management
 - **FR-DATA-01 (HuggingFace Integration)**: The system shall allow pushing generated datasets to HuggingFace Hub and pulling them for training.
 - **FR-DATA-02 (Argilla Integration)**: The system shall support uploading datasets to Argilla for human-in-the-loop review (optional).
+- **FR-DATA-03 (Online Multilingual Diversification)**: The system shall support diversifying the training dataset on-the-fly by translating text fields (`user_query`, `final_answer`) to random target languages during the training process, while strictly preserving English for reasoning traces (`<thought>`, tool calls). This ensures that every epoch presents uniquely diversified samples to the model.
+- **FR-DATA-04 (Stochastic Configuration)**: The system shall support a configurable total probability (ratio) for diversification, with parameters for translation models and random language selection applied per individual sample retrieval.
+- **FR-DATA-05 (Feature Flipping)**: The diversification logic shall be toggleable via a master flag in the configuration/CLI.
+- **FR-DATA-06 (Parallel Execution)**: The diversification process shall be implemented using asynchronous/parallel data loading (e.g., Iterable Datasets) to ensure that translation does not become a bottleneck for the training loop.
 
 ### Playground & Evaluation
 - **FR-PLAY-01 (Interactive Chat)**: The system shall provide a web interface (`ui/`) to interact with models, supporting parameter adjustment (temp, top_p) and visualization of agent traces (thoughts, tool calls).
@@ -30,7 +34,8 @@
 - **FR-PLAY-04 (Robustness)**: The backend shall handle concurrent loading requests gracefully and report current model status to prevents state inconsistencies.
 - **FR-PLAY-05 (Conversation History)**: The system shall persist conversation history to disk (`data/sessions/`) and allow users to create new chats or resume previous ones via the sidebar.
 - **FR-PLAY-06 (Output Sanitization)**: The UI shall automatically strip internal control tokens (e.g., `<|wait|>`) from the assistant's response before displaying it to the user.
-- **FR-PLAY-07 (Dual Model Support)**: The system shall support using a specific (potentially different) model for synthetic data generation tasks than the one being evaluated, to avoid capabilities mismatch.
+- **FR-PLAY-08 (Reference Highlighting)**: The Final Answer display shall support parsing markdown-style references (e.g., `[label](Output[ID])`) which, on hover, highlight the corresponding Tool Output block in the trace.
+- **FR-PLAY-09 (Conversation Deletion)**: The system shall allow users to delete conversations from the history list, requiring a confirmation dialog to prevent accidental deletion.
 
 ## Non-Functional Requirements
 
@@ -45,3 +50,4 @@
 
 ### Usability
 - **NFR-USE-01 (Documentation)**: The system shall provide clear architecture diagrams and "Getting Started" guides (fulfilled by `docs/`).
+- **NFR-USE-02 (Feedback)**: Long-running operations, especially model loading, shall provide real-time, granular progress feedback to the user (e.g., percentage loaded) to prevent perception of freezing.

@@ -48,7 +48,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [loadedModelId, setLoadedModelId] = useState<string | null>(null);
+
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
+
+  // Track loaded mappings: { "default": "Mistral...", "synthetic": "TinyLlama..." }
+  const [loadedModels, setLoadedModels] = useState<Record<string, string>>({});
 
   // History State
   const [history, setHistory] = useState<{ id: string, title: string, updated_at: string }[]>([]);
@@ -72,7 +76,12 @@ function App() {
   const fetchCurrentModel = async () => {
     try {
       const current = await api.getCurrentModel();
-      setLoadedModelId(current.adapter_id || current.base_model_id);
+      // Transform res {alias: {base, adapter}} to {alias: display_id}
+      const mapped: Record<string, string> = {};
+      Object.entries(current).forEach(([alias, info]) => {
+        mapped[alias] = info.adapter || info.base;
+      });
+      setLoadedModels(mapped);
     } catch (e) {
       // quiet fail on poll
     }
@@ -118,7 +127,7 @@ function App() {
     }
   };
 
-  const handleLoadModel = async () => {
+  const handleLoadModel = async (alias: string) => {
     if (!selectedModelId) return;
     setIsLoading(true);
     try {
@@ -126,9 +135,9 @@ function App() {
       const model = models.find(m => m.path === selectedModelId);
       if (model?.type === 'adapter') {
         const base = "mistralai/Mistral-7B-Instruct-v0.3";
-        await api.loadModel(base, selectedModelId);
+        await api.loadModel(base, selectedModelId, alias);
       } else {
-        await api.loadModel(selectedModelId);
+        await api.loadModel(selectedModelId, undefined, alias);
       }
       await fetchCurrentModel();
     } catch (e: any) {
@@ -143,13 +152,34 @@ function App() {
     }
   };
 
-  const handleEjectModel = async () => {
-    if (!confirm("Are you sure you want to eject the model? This will clear GPU memory.")) return;
+  const handleEjectModel = async (alias: string) => {
+    if (!confirm(`Are you sure you want to eject the ${alias} model?`)) return;
     try {
-      await api.ejectModel();
-      setLoadedModelId(null);
+      await api.ejectModel(alias);
+      // Optimistic update
+      setLoadedModels(prev => {
+        const next = { ...prev };
+        delete next[alias];
+        return next;
+      });
+      await fetchCurrentModel();
     } catch (e) {
       console.error("Failed to eject", e);
+    }
+  };
+
+  const handleDeleteConversation = async (id: string) => {
+    try {
+      await api.deleteConversation(id);
+      // If current chat is deleted, clear messages
+      if (currentConversationId === id) {
+        setMessages([]);
+        setCurrentConversationId(null);
+      }
+      await loadHistory();
+    } catch (e) {
+      console.error("Failed to delete conversation", e);
+      alert("Failed to delete conversation.");
     }
   };
 
@@ -199,13 +229,52 @@ function App() {
         await api.updateConversation(distinctId, finalHistory);
         loadHistory(); // Update titles
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Generation failed", e);
-      setMessages([...newHistory, { role: 'assistant', content: "Error: Generation failed. Is the model loaded?" }]);
+      let errMsg = "Error: Generation failed.";
+      if (e.response && e.response.status === 503) {
+        errMsg += " Model not loaded. Please load the 'Agent' model.";
+      }
+      setMessages([...newHistory, { role: 'assistant', content: errMsg }]);
     } finally {
       setIsGenerating(false);
     }
   };
+
+  // SSE for Loading Progress
+  useEffect(() => {
+    const eventSource = new EventSource('http://localhost:8000/v1/events');
+
+    // Listen for named 'model_progress' events (SSE sends "event: model_progress")
+    eventSource.addEventListener('model_progress', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.alias) {
+          // Update live status
+          setLoadingStatus(`[${data.alias}] ${data.message}`);
+
+          // If this is a model progress event
+          if (data.step === 'done' || data.step === 'ejected') {
+            // Refresh status
+            fetchCurrentModel();
+            // If we were loading this specific alias, stop loading spinner
+            setIsLoading(false);
+            setLoadingStatus(null);
+          }
+        }
+      } catch (e) {
+        console.error("SSE Parse Error", e);
+      }
+    });
+
+    eventSource.onerror = (e) => {
+      console.error("SSE Connection Error", e);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
 
   return (
     <div className="flex h-screen w-screen bg-[#121212] text-white overflow-hidden">
@@ -218,12 +287,14 @@ function App() {
         onLoadModel={handleLoadModel}
         onEjectModel={handleEjectModel}
         isLoading={isLoading}
-        loadedModelId={loadedModelId}
+        loadingStatus={loadingStatus}
+        loadedModels={loadedModels}
         tools={DUMMY_TOOLS}
         history={history}
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewChat={handleNewChat}
+        onDeleteConversation={handleDeleteConversation}
       />
       <main className="flex-1 h-full min-w-0">
         <ChatInterface

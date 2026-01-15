@@ -61,6 +61,30 @@ The artifacts include:
 - `adapter_model.bin`: Trained weights.
 - `tokenizer.json`: Tokenizer files.
 
+## Multilingual Data Augmentation
+
+To improve model robustness and enable it to handle queries in different languages while maintaining English-based reasoning, `irca-agent` supports on-the-fly dataset augmentation.
+
+### How it Works
+The system diversifies a configurable subset of the training dataset's `User Queries` and `Final Answers` by translating them into target languages (e.g., French, Spanish) during the data loading phase. Reasoning traces remain in English to maintain internal logic consistency. This is implemented using **replacement logic**, meaning the total dataset size remains constant while its linguistic diversity increases.
+
+### Configuration
+
+| CLI Flag | Environment Variable | Default | Description |
+|----------|----------------------|---------|-------------|
+| `--augment` | `AUGMENT_ENABLED` | `False` | Enable multilingual augmentation. |
+| `--augment_lang` | `AUGMENT_LANGUAGES` | `['fr']` | List of target languages (space separated in CLI). |
+| `--augment_ratio` | `AUGMENT_RATIO` | `0.5` | Probability (ratio) of a sample being augmented. |
+| `--augment_model_template` | `AUGMENT_MODEL_NAME_TEMPLATE` | `Helsinki-NLP/opus-mt-en-{lang}` | HF template for translation models. |
+| `--augment_max_length` | `AUGMENT_MAX_LENGTH` | `512` | Max tokens for translation. |
+
+### Example
+
+```bash
+# Augment 20% of the dataset with French and Spanish translations
+irca finetune run --augment --augment_lang fr es --augment_ratio 0.2
+```
+
 ## Inference with Finetuned Models
 
 To use your finetuned model:

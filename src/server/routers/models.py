@@ -21,6 +21,11 @@ class ModelInfo(BaseModel):
 class LoadModelRequest(BaseModel):
     base_model_id: str
     adapter_id: str | None = None
+    alias: str = "default"  # e.g., "default", "synthetic", "judge"
+
+
+class EjectModelRequest(BaseModel):
+    alias: str = "default"
 
 
 @router.get("/models", response_model=list[ModelInfo])
@@ -38,15 +43,11 @@ async def list_models() -> list[ModelInfo]:
 
     # 2. Adapters (Scan directory)
     finetuned_dir = settings.finetuned_models_path
-    logger.info(f"Scanning for adapters in: {finetuned_dir}")
-    logger.info(f"Directory exists: {finetuned_dir.exists()}")
     if finetuned_dir.exists():
         for item in finetuned_dir.iterdir():
-            logger.info(f"Found item: {item.name}, is_dir: {item.is_dir()}")
             if item.is_dir():
                 models.append(ModelInfo(id=item.name, type="adapter", path=str(item)))
 
-    logger.info(f"Total models found: {len(models)}")
     return models
 
 
@@ -57,7 +58,6 @@ async def load_model(request: LoadModelRequest) -> dict[str, str]:
     """
     manager = ModelManager.get_instance()
     try:
-        # Check if adapter_id is a short name or path
         adapter_path = None
         if request.adapter_id:
             finetuned_dir = settings.finetuned_models_path
@@ -67,10 +67,12 @@ async def load_model(request: LoadModelRequest) -> dict[str, str]:
             else:
                 adapter_path = request.adapter_id  # Assume absolute or HF ID
 
-        await manager.load_model(request.base_model_id, adapter_path)
-        return {"status": "success", "message": f"Loaded {request.base_model_id} with {adapter_path}"}
+        await manager.load_model(request.base_model_id, adapter_path, alias=request.alias)
+        return {
+            "status": "success",
+            "message": f"Loaded {request.base_model_id} (adapter: {adapter_path}) as '{request.alias}'",
+        }
     except RuntimeError as e:
-        # Busy
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error loading model: {e}")
@@ -78,17 +80,19 @@ async def load_model(request: LoadModelRequest) -> dict[str, str]:
 
 
 @router.get("/model/current")
-async def get_current_model() -> dict[str, str | None]:
+async def get_current_model() -> dict[str, dict[str, str | None]]:
     manager = ModelManager.get_instance()
-    return {"base_model_id": manager.current_base_model_id, "adapter_id": manager.current_adapter_id}
+    from typing import cast
+
+    return cast(dict[str, dict[str, str | None]], manager.loaded_configs)
 
 
 @router.post("/model/eject")
-async def eject_model() -> dict[str, str]:
+async def eject_model(request: EjectModelRequest) -> dict[str, str]:
     manager = ModelManager.get_instance()
     try:
-        await manager.eject_model()
-        return {"status": "success", "message": "Model ejected"}
+        await manager.eject_model(request.alias)
+        return {"status": "success", "message": f"Model '{request.alias}' ejected"}
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     except Exception as e:

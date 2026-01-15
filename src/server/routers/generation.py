@@ -50,15 +50,12 @@ async def generate_chat_completion(request: GenerationRequest) -> GenerationResp
     prompt = build_full_prompt(sample)
 
     try:
-        # Implicitly use currently loaded model if IDs not provided
-        # Or load default if nothing loaded.
-        if not manager.model:
-            # Fallback default (this should be configurable)
-            # For now, simplistic error
-            raise HTTPException(status_code=503, detail="Model not loaded. Use /v1/model/load endpoint.")
-
         content = await manager.generate(
-            prompt=prompt, max_new_tokens=request.max_tokens, temperature=request.temperature, top_p=request.top_p
+            prompt=prompt,
+            alias="default",
+            max_new_tokens=request.max_tokens,
+            temperature=request.temperature,
+            top_p=request.top_p,
         )
 
         return GenerationResponse(content=content)
