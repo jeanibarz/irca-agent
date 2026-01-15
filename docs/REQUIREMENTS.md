@@ -30,6 +30,7 @@
 - **FR-PLAY-04 (Robustness)**: The backend shall handle concurrent loading requests gracefully and report current model status to prevents state inconsistencies.
 - **FR-PLAY-05 (Conversation History)**: The system shall persist conversation history to disk (`data/sessions/`) and allow users to create new chats or resume previous ones via the sidebar.
 - **FR-PLAY-06 (Output Sanitization)**: The UI shall automatically strip internal control tokens (e.g., `<|wait|>`) from the assistant's response before displaying it to the user.
+- **FR-PLAY-07 (Dual Model Support)**: The system shall support using a specific (potentially different) model for synthetic data generation tasks than the one being evaluated, to avoid capabilities mismatch.
 
 ## Non-Functional Requirements
 

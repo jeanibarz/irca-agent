@@ -2,16 +2,16 @@
 # Project Session Memory
 
 **Last Updated:** 2026-01-15
-**Last Commit:** `feat(ui): add conversation history and token sanitization` - Implemented persistent chat history and output cleaning.
+**Last Commit:** `fix(core): ensure prompt is stripped from generation output` - Fixed prompt echoing.
 **Branch:** main
-**Task ID:** playground-v1-complete
+**Task ID:** playground-v1-refinement
 
 ---
 
 ## Current Task
 
 **Goal:** Implement Interactive Playground and Evaluation Suite (RFC-001)
-**Status:** ✅ Completed (Phase 1 & History)
+**Status:** ✅ Completed (Phase 1 & Refinements)
 **Started:** 2026-01-15
 **Task Type:** feature
 
@@ -22,11 +22,11 @@
     *   Added **Available Tools** to Sidebar.
     *   Implemented **Conversation History** list in Sidebar.
     *   Implemented **"New Chat"** functionality.
-    *   **Output Sanitization**: Automatically strips`<|wait|>` and other control tokens from the display while preserving them in the backend generation logic if needed (though currently we just clean the display).
+    *   **Output Sanitization**: Automatically strips `<|wait|>` and other control tokens from the display.
 
 2.  **Synthetic Red-Teaming**:
     *   Implemented `POST /v1/synthetic/query` endpoint with "Feasible" and "Infeasible" modes.
-    *   Fixed bug in `synthetic.py` where `max_token` was passed instead of `max_new_tokens`.
+    *   **Fixed Generation**: Updated `ModelManager` to slice output tokens strictly (removing prompt echo).
 
 3.  **Robust Backend**:
     *   **Async/Locking**: Prevented race conditions in model loading.
@@ -34,24 +34,23 @@
     *   **Ejection**: Allowed manual GPU memory clearing.
 
 4.  **Documentation**:
-    *   Updated `docs/REQUIREMENTS.md` with `FR-PLAY-05` (History) and `FR-PLAY-06` (Sanitization).
+    *   Updated `docs/REQUIREMENTS.md` with Playgroung requirements including `FR-PLAY-07` (Dual Model support).
     *   Updated `docs/TRACEABILITY_MATRIX.md`.
 
 ### Key Findings
 
--   **FastAPI Async Blocking**: Calling synchronous CPU/GPU heavy functions inside `async def` endpoints blocks the event loop. Use `asyncio.to_thread`.
--   **Token Leaks**: Models trained with specific control tokens (like `<|wait|>`) often output them. Frontend sanitization is necessary to provide a clean UX.
--   **Local Persistence**: Quick file-based JSON storage is an effective way to adding "Memory" to a local playground without setting up a full database.
+-   **Prompt Stripping**: String-based prompt stripping (`response.startswith(prompt)`) is unreliable because of tokenization artifacts (models adding spaces/newlines). Always use `input_token_len` to slice the output tensor directly: `outputs[0][input_len:]`.
+-   **Dual Model Use**: Synthetic Data Generation often requires a smarter/creative base model, while the model being tested might be a specialized narrow finetune. In the future, we should allow loading separate models for these tasks.
 
 ### Files Created/Modified
 
 | File | Purpose |
 |------|---------|
-| `src/server/routers/conversations.py` | Backend logic for chat persistence. |
-| `ui/src/App.tsx` | Main state machine (History, Models, Chat). |
-| `ui/src/components/Sidebar.tsx` | UI for History list and Model control. |
-| `ui/src/lib/api.ts` | API client additions for History. |
-| `docs/REQUIREMENTS.md` | New requirements logged. |
+| `src/server/model_manager.py` | Core model generation logic (Prompt slicing). |
+| `src/server/routers/conversations.py` | Chat persistence. |
+| `ui/src/App.tsx` | Main state machine. |
+| `docs/REQUIREMENTS.md` | New `FR-PLAY-07`. |
+| `docs/TRACEABILITY_MATRIX.md` | Gap analysis. |
 
 ---
 
@@ -63,14 +62,15 @@
 - ✅ Implemented Robust Backend (Async, Eject, Lock).
 - ✅ Implemented Persistent Conversation History.
 - ✅ Implemented Output Token Sanitization.
+- ✅ Fixed Generation Output (Prompt Echoing).
 
 ### Task Validation
 
 -   **Command**: `npm run dev` + `python -m src.server.main`.
 -   **Result**:
+    -   Synthetic Queries now appear cleanly (without the prompt text).
     -   Chat history survives page reloads.
     -   "New Chat" clears context correctly.
-    -   `<|wait|>` is removed from "Assistant" messages in the UI.
 
 ---
 
@@ -80,7 +80,7 @@
     -   Current "Tools" are dummy definitions.
     -   Goal: Actually execute python code (e.g. `get_stock_price`) in a safe sandbox (Docker/gVisor).
 2.  **LLM-as-a-Judge**:
-    -   Automate the "synthetic query -> generation -> verify" loop using a stronger model (or the same model) to grade the response.
+    -   Automate the "synthetic query -> generation -> verify" loop using a stronger model.
 
 ---
 

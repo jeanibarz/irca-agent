@@ -133,11 +133,10 @@ class ModelManager:
                 pad_token_id=self.tokenizer.eos_token_id,
             )
 
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-        # Strip prompt from response
-        if response.startswith(prompt):
-            response = response[len(prompt) :]
+        # Slice to keep only new tokens
+        input_len = inputs.input_ids.shape[1]
+        generated_tokens = outputs[0][input_len:]
+        response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
         # Simple stop token handling (post-processing) if needed, though generate supports eos_token_id
         # For custom string stop tokens, we usually need custom stopping criteria, strict implementation omitted for brevity

@@ -21,6 +21,7 @@ This matrix maps Functional Requirements (FR) to their Implementation components
 | **FR-PLAY-04** | Robustness | `src/server/model_manager.py` (Async locks) | Manual Verification (Concurrent clicking) |
 | **FR-PLAY-05** | Conversation History | `src/server/routers/conversations.py`<br>`ui/src/App.tsx` | Manual Verification (Refresh page) |
 | **FR-PLAY-06** | Output Sanitization | `ui/src/App.tsx` (regex replace) | Manual Verification (Generate trace) |
+| **FR-PLAY-07** | Dual Model Support | - | Not Implemented ⚠️ |
 
 *> Symbol denotes components/tests that are logically inferred to exist or should exist based on the architecture analysis. Files marked with `*` in the Test column indicate recommended coverage gaps if not already present.
 
