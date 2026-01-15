@@ -5,6 +5,7 @@ Commands for finetuning models on IRCA datasets.
 """
 
 import logging
+import os
 import sys
 
 import click
@@ -24,7 +25,7 @@ def finetune() -> None:
 @click.option(
     "--model-type",
     "-m",
-    type=click.Choice(["mistral", "tinyllama", "qwen-4b", "qwen-14b"]),
+    type=click.Choice(["mistral", "mistral-v3", "tinyllama", "qwen-4b", "qwen-14b"]),
     default="mistral",
     help="Type of model to finetune",
 )
@@ -184,15 +185,25 @@ def run(
     # Load dataset
     click.echo(f"\n📊 Loading dataset: {config['dataset']}")
     try:
-        train_dataset = datasets.load_dataset(config["dataset"])  # type: ignore
-        click.echo(f"✓ Dataset loaded: {len(train_dataset['train'])} examples")
+        if os.path.exists(config["dataset"]):
+            click.echo("   Loading from local disk...")
+            loaded_dataset = datasets.load_from_disk(config["dataset"])  # type: ignore
+        else:
+            loaded_dataset = datasets.load_dataset(config["dataset"])  # type: ignore
+
+        if isinstance(loaded_dataset, datasets.DatasetDict):  # type: ignore
+            train_dataset = loaded_dataset["train"]
+        else:
+            train_dataset = loaded_dataset
+
+        click.echo(f"✓ Dataset loaded: {len(train_dataset)} examples")
     except Exception as e:
         click.secho(f"Error loading dataset: {e}", fg="red", err=True)
         sys.exit(1)
 
     # Set up trainer
     click.echo("\n⚙️ Setting up trainer...")
-    training_args = transformers.TrainingArguments(
+    training_args = trl.SFTConfig(
         output_dir=config["output_dir"],
         num_train_epochs=config["num_train_epochs"],
         per_device_train_batch_size=1,
@@ -208,15 +219,15 @@ def run(
         warmup_ratio=0.03,
         lr_scheduler_type="constant",
         disable_tqdm=False,
+        max_seq_length=config.get("max_seq_length", 4096),
+        packing=True,
     )
 
     trainer = trl.SFTTrainer(
         model=model,
-        train_dataset=train_dataset["train"],
+        train_dataset=train_dataset,
         peft_config=peft_config,
-        max_seq_length=config.get("max_seq_length", 4096),
         tokenizer=tokenizer,
-        packing=True,
         formatting_func=prompt_builder.format_instruction,
         args=training_args,
     )
@@ -246,7 +257,7 @@ def run(
 @click.option(
     "--model-type",
     "-m",
-    type=click.Choice(["mistral", "tinyllama", "qwen-4b", "qwen-14b"]),
+    type=click.Choice(["mistral", "mistral-v3", "tinyllama", "qwen-4b", "qwen-14b"]),
     default="mistral",
     help="Model type to show info for",
 )

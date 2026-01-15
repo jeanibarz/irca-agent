@@ -12,17 +12,16 @@
 >
 > Keep under 500 lines. Remove deprecated/invalid entries when file grows.
 
-**Last Updated:** YYYY-MM-DD (Session X)
+**Last Updated:** 2026-01-15 (Finetuning Session)
 
 ---
 
 ## Environment Setup
 <!-- Commands, paths, tools specific to this environment -->
 
-- **Ports**: [List key ports]
-- **Database**: [Connection strings/commands]
-- **Package Manager**: [npm/yarn/pnpm/bun]
-- **Test Runner**: [command info]
+- **Dependencies**: `sentencepiece` is required for Mistral v0.3 tokenizer.
+- **Poetry**: Use `poetry run <command>` or `poetry shell`.
+- **Workspace**: Root is `/home/jean/git/irca-agent`.
 
 ---
 
@@ -31,31 +30,34 @@
 
 | Mistake | Prevention | Added |
 |---------|------------|-------|
-| Example Mistake | Example Prevention | YYYY-MM-DD |
+| Passing `max_seq_length`/`packing` to `SFTTrainer.__init__` | Use `trl.SFTConfig` and pass these args there. New `trl` versions moved these from `__init__` to config. | 2026-01-15 |
+| Missing `sentencepiece` for Mistral models | Add `sentencepiece` to `pyproject.toml` dependencies. | 2026-01-15 |
+| `TypeError: SFTTrainer.__init__() got an unexpected keyword argument` | Check if the argument belongs in `SFTConfig` instead of `__init__`. | 2026-01-15 |
 
 ---
 
 ## Patterns That Work
 <!-- Successful approaches to reuse -->
 
-- **Pattern Name**: Description of the pattern and why it works.
+- **Local Dataset Loading**: Using `datasets.load_from_disk(path)` when `os.path.exists(path)` allows using locally generated datasets without pushing to Hub.
+- **Handling DatasetDict**: Always check if loaded dataset is `DatasetDict` or `Dataset` and extract `train` split if necessary to avoid `KeyError` or type errors in Trainer.
 
 ---
 
 ## Patterns That Failed
 <!-- Approaches to avoid -->
 
-- **Anti-Pattern Name**: Description of why it failed.
+- **Direct `TrainingArguments` usage with `SFTTrainer`**: `SFTTrainer` now expects `SFTConfig` (which subclasses `TrainingArguments`) for SFT-specific parameters.
 
 ---
 
 ## Codebase Knowledge
 <!-- Facts about this specific codebase -->
 
-- **System Structure**: Key architectural facts.
-- **File Organization**: Where things live.
-- **Testing**: How to run/write tests.
-- **Key Modules**: Description of important modules/classes.
+- **Model Configuration**: `src/config/settings.py` defines model presets (`mistral`, `mistral-v3`, etc.).
+- **CLI Structure**: `src/cli/commands/` contains the implementation for `irca` CLI commands.
+- **Finetuning**: Uses `trl` library with QLoRA (`peft`, `bitsandbytes`).
+- **Dataset Generation**: Datasets are stored in `datasets/` directory.
 
 ---
 
@@ -66,6 +68,7 @@ FORMAT: Brief notes like "Added X to Common Mistakes" or "Updated Codebase Knowl
 CLEANUP: Remove entries older than 7 days
 -->
 
-### Session X: [Topic] (YYYY-MM-DD)
-- Added ...
-- Updated ...
+### Session: Finetuning Mistral v0.3 (2026-01-15)
+- Added `mistral-v3` specific requirements (`sentencepiece`) to Common Mistakes.
+- Added notes about `trl.SFTConfig` vs `TrainingArguments` migration.
+- Added Local Dataset Loading pattern.

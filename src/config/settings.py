@@ -191,6 +191,10 @@ class Settings(BaseSettings):
                 "base_model": "mistralai/Mistral-7B-Instruct-v0.2",
                 "model_name": f"Mistral-7B-Instruct-v0.2_irca_agent_{self.version}",
             },
+            "mistral-v3": {
+                "base_model": "mistralai/Mistral-7B-Instruct-v0.3",
+                "model_name": f"Mistral-7B-Instruct-v0.3_irca_agent_{self.version}",
+            },
             "tinyllama": {
                 "base_model": "Doctor-Shotgun/TinyLlama-1.1B-32k",
                 "model_name": f"TinyLlama-1.1B_irca_agent_{self.version}",
