@@ -15,6 +15,10 @@ This matrix maps Functional Requirements (FR) to their Implementation components
 | **FR-FT-02** | Model Presets | `src/config/settings.py` -> `get_model_config` | `tests/unit/test_settings.py`* |
 | **FR-FT-03** | Configurable Params | `src/config/settings.py` | `tests/unit/test_settings.py`* |
 | **FR-DATA-01** | HF Integration | `src/dataset_generation/hf_utils.py`*<br>`src/cli/commands/dataset.py` | Manual Integration Test |
+| **FR-PLAY-01** | Interactive Chat | `ui/src/App.tsx`<br>`ui/src/components/ChatInterface.tsx`<br>`src/server/routers/generation.py` | Manual Verification (Browser) |
+| **FR-PLAY-02** | Model Management | `src/server/model_manager.py`<br>`src/server/routers/models.py`<br>`ui/src/components/Sidebar.tsx` | Manual Verification (UI Buttons) |
+| **FR-PLAY-03** | Synthetic Red-Teaming | `src/server/routers/synthetic.py`<br>`ui/src/components/ChatInterface.tsx` | Manual Verification (Magic Buttons) |
+| **FR-PLAY-04** | Robustness | `src/server/model_manager.py` (Async locks) | Manual Verification (Concurrent clicking) |
 
 *> Symbol denotes components/tests that are logically inferred to exist or should exist based on the architecture analysis. Files marked with `*` in the Test column indicate recommended coverage gaps if not already present.
 

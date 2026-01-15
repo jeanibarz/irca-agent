@@ -34,6 +34,7 @@
 | Missing `sentencepiece` for Mistral models | Add `sentencepiece` to `pyproject.toml` dependencies. | 2026-01-15 |
 | `TypeError: SFTTrainer.__init__() got an unexpected keyword argument` | Check if the argument belongs in `SFTConfig` instead of `__init__`. | 2026-01-15 |
 | Mistral v3 Finetuning Instability | High Learning Rate (1e-3) causes gradient explosion. Use `2e-4` or lower. Also ensure `tokenizer.padding_side='right'`. | 2026-01-15 |
+| Async Endpoint Blocking | Calling sync functions (like `model.generate`) directly in `async def` endpoints blocks the whole server. Use `await asyncio.to_thread(...)`. | 2026-01-15 |
 
 ---
 
@@ -60,6 +61,8 @@
 - **CLI Structure**: `src/cli/commands/` contains the implementation for `irca` CLI commands.
 - **Finetuning**: Uses `trl` library with QLoRA (`peft`, `bitsandbytes`).
 - **Dataset Generation**: Datasets are stored in `datasets/` directory.
+- **Frontend**: Located in `ui/`. Built with Vite + React + Tailwind v4. Runs on port 3001 (default).
+- **Backend API**: FastAPI app in `src/server/`. Uses `uvicorn`.
 
 ---
 
@@ -69,6 +72,11 @@ PURPOSE: Track WHAT was added to permanent sections (not duplicate storage)
 FORMAT: Brief notes like "Added X to Common Mistakes" or "Updated Codebase Knowledge with Y"
 CLEANUP: Remove entries older than 7 days
 -->
+
+### Session: Playground & Robustness (2026-01-15)
+- Added FastAPI Event Loop blocking mistake (sync GPU calls).
+- Added Tailwind v4 migration note.
+- Documented Frontend/Backend structure.
 
 ### Session: Finetuning Mistral v0.3 (2026-01-15)
 - Added `mistral-v3` specific requirements (`sentencepiece`) to Common Mistakes.
