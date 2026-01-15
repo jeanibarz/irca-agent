@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ChatInterface } from './components/ChatInterface';
-import { api, Message, Model } from './lib/api';
+import { api } from './lib/api';
+import type { Message, Model } from './lib/api';
 
 function App() {
   const [models, setModels] = useState<Model[]>([]);

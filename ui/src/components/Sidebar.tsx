@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Model } from '../lib/api';
-import { Settings, Cpu, Thermometer, MessageSquare, Zap, Activity } from 'lucide-react';
+import type { Model } from '../lib/api';
+import { Settings, Cpu, Activity } from 'lucide-react';
 
 interface SidebarProps {
     models: Model[];
