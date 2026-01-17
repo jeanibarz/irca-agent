@@ -10,11 +10,15 @@
 
 ## Current Task
 
-**Goal:** Run augmentation impact experiment to determine if data augmentation improves model performance.
+**Goal:** Debug and fix IRCA model inference format issues in playground.
 **Status:** ✅ Complete
-**Experiment:** exp001-augmentation-impact
-**Methodology:** ADR-008 - Same number of training steps, compare train/test perplexity
-**Task Type:** experiment/evaluation
+**Task Type:** debugging/implementation
+
+### Summary
+Fixed issues preventing fine-tuned IRCA models from producing correct output format:
+1. Added IRCA system instructions to generation endpoint (was using generic prompt)
+2. Changed JSON format from pretty-printed to compact (matching training data)
+3. Implemented agentic loop for multi-step function calling with mock outputs
 
 ### Experiment State
 
@@ -51,7 +55,18 @@
 
 ### What I Did
 
-1.  **ADR-008 Implementation (2026-01-17)**:
+1.  **Playground Inference Debugging (2026-01-17)**:
+    *   **Problem**: Fine-tuned IRCA model producing generic conversational output instead of IRCA format.
+    *   **Root Cause 1**: Server using generic "You are a helpful assistant" prompt instead of IRCA instructions.
+    *   **Root Cause 2**: JSON format mismatch - inference used `indent=4`, training used compact JSON.
+    *   **Root Cause 3**: Model stopping at function calls (at `<|wait|>` token) without continuing to FINAL ANSWER.
+    *   **Fix 1**: Added `DEFAULT_IRCA_INSTRUCTIONS` constant with full IRCA format including example.
+    *   **Fix 2**: Changed to `json.dumps(functions_list, separators=(",", ": "))` for compact format.
+    *   **Fix 3**: Implemented agentic loop with mock function outputs for complete cycles.
+    *   Key functions added: `generate_output_id()`, `generate_mock_output()`, `extract_function_call()`.
+    *   **Lesson**: exp001 used Mistral-7B-Instruct-v0.3, not Qwen. Always verify via `adapter_config.json`.
+
+2.  **ADR-008 Implementation (2026-01-17)**:
     *   **Phase 1: CLI Extensions** - Added `--output`, `--batch-size`, `--lora-r`, `--save-steps`, `--seed` to `irca finetune run`.
     *   **Phase 2: Experiment Commands** - Created `irca experiment eval-checkpoints` and `irca experiment compare`.
     *   **Phase 3: Bootstrap CI** - Created `src/diversity/statistics.py` with `bootstrap_confidence_interval()`.
@@ -105,6 +120,7 @@
 
 - **GPU Memory Constraint (CRITICAL)**: NEVER run multiple GPU-intensive tasks concurrently. The system cannot handle multiple models loaded in GPU memory at the same time. Always run model training, evaluation, and inference tasks sequentially, waiting for one to complete before starting another.
 - **Augmentation Impact**: Based on exp001 results, translation augmentation does not improve test perplexity and may hurt performance on English-only test sets. Consider task-specific augmentation strategies.
+- **Training/Inference Format Consistency (CRITICAL)**: Fine-tuned models are extremely sensitive to prompt format. For IRCA models: (1) Must include full IRCA instructions with example, (2) JSON must be compact (not pretty-printed), (3) Use same chat template as training. Mismatches cause model to produce wrong output format.
 - **Multiprocessing + CUDA Trap**: Avoid initializing CUDA (e.g., loading `transformers` model) before calling `dataset.map(num_proc=X)`. Forked child processes can deadlock or crash if they inherit a process state that has touched the GPU. Always perform diversification/preprocessing before loading the LLM.
 - **Improved Dataset Parsing**: Standard agent traces contain multiple tool calls. Parsing must be robust to multiple `<|wait|>` tokens. Using specific section markers (e.g., `EXAMPLE:`, `### FUNCTIONS AVAILABLE`) is safer than blindly splitting on control tokens.
 - **Sequential Model Memory**: Static (Offline) diversification using CPU models is highly efficient if performed *before* loading the main LLM. This "Unload-Between-Stages" pattern prevents RAM/VRAM exhaustion on mid-tier hardware.
@@ -166,8 +182,11 @@
 - ✅ **New**: Created `irca experiment compare` for baseline vs augmented comparison.
 - ✅ **New**: Created `src/diversity/statistics.py` with bootstrap confidence intervals.
 - ✅ **New**: Added experiment comparison report generation to `src/diversity/report.py`.
-- ⏳ **Pending**: Train baseline and augmented models on Mistral 7B v0.3.
-- ⏳ **Pending**: Evaluate models and compare perplexity.
+- ✅ **Complete**: Train baseline and augmented models on Mistral 7B v0.3.
+- ✅ **Complete**: Evaluate models and compare perplexity.
+- ✅ **New**: Fixed IRCA inference format - added `DEFAULT_IRCA_INSTRUCTIONS` to generation.py.
+- ✅ **New**: Fixed JSON format mismatch - changed from pretty-print to compact.
+- ✅ **New**: Implemented agentic loop for multi-step function calling with mock outputs.
 - **Previous**: Optimized diversification to use **1 GPU worker** - reduced total wait to ~2 mins.
 - ✅ **New**: Fixed `parse_corrected_agent_trace` to handle multi-step traces and preserve English reasoning steps.
 - ✅ **New**: Reordered CLI workflow to diversify dataset *before* loading LLM (Resource Optimization/CUDA fix).

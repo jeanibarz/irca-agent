@@ -1,5 +1,8 @@
 import json
 import logging
+import random
+import re
+import string
 
 from fastapi import APIRouter, HTTPException
 
@@ -9,6 +12,78 @@ from src.server.schemas import GenerationRequest, GenerationResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Maximum iterations for the agentic loop to prevent infinite loops
+MAX_AGENT_ITERATIONS = 5
+
+
+def generate_output_id() -> str:
+    """Generate a random output ID like 'Output[abc123xyz]'."""
+    chars = string.ascii_letters + string.digits
+    return "".join(random.choices(chars, k=12))
+
+
+def generate_mock_output(function_name: str, parameters: dict) -> str:
+    """Generate a plausible mock output for a function call."""
+    mock_outputs = {
+        "get_weather": lambda p: {
+            "temperature": random.randint(15, 30),
+            "unit": "celsius",
+            "condition": random.choice(["sunny", "cloudy", "rainy"]),
+        },
+        "get_stock_price": lambda p: {
+            "ticker": p.get("ticker", "AAPL"),
+            "price": round(random.uniform(100, 500), 2),
+            "currency": "USD",
+        },
+        "calculator": lambda p: {
+            "result": eval(p.get("expression", "0"))
+            if p.get("expression", "")
+            .replace(" ", "")
+            .replace("+", "")
+            .replace("-", "")
+            .replace("*", "")
+            .replace("/", "")
+            .replace(".", "")
+            .isdigit()
+            or True
+            else 0
+        },
+        "get_user_location": lambda p: {
+            "lat": round(random.uniform(40, 50), 3),
+            "long": round(random.uniform(-5, 10), 3),
+        },
+    }
+
+    generator = mock_outputs.get(function_name, lambda p: {"status": "success", "data": "Mock response"})
+    try:
+        return str(generator(parameters))
+    except Exception:
+        return str({"status": "success", "result": "Mock data"})
+
+
+def extract_function_call(text: str) -> tuple[str, dict] | None:
+    """Extract function name and parameters from generated text."""
+    # Look for JSON function call pattern
+    patterns = [
+        r"Call function:\s*(\{[^}]+\})",
+        r"Function Call[:\s]*(\{[^}]+\})",
+        r'"name":\s*"([^"]+)"[^}]*"parameters":\s*(\{[^}]*\})',
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        if match:
+            try:
+                if len(match.groups()) == 1:
+                    call_json = json.loads(match.group(1))
+                    return call_json.get("name", "unknown"), call_json.get("parameters", {})
+                else:
+                    return match.group(1), json.loads(match.group(2))
+            except json.JSONDecodeError:
+                continue
+    return None
+
 
 # Default IRCA system instructions - matches the training data format
 DEFAULT_IRCA_INSTRUCTIONS = """You are an AI assistant with specific functions at your disposal. Your task is to answer the user's question succinctly. Utilize markdown links to refer to detailed data in the context when relevant.
@@ -101,16 +176,55 @@ async def generate_chat_completion(request: GenerationRequest) -> GenerationResp
     logger.debug(f"Using stop sequences: {stop_sequences}")
 
     try:
-        content = await manager.generate(
-            prompt=prompt,
-            alias="default",
-            max_new_tokens=request.max_tokens,
-            temperature=request.temperature,
-            top_p=request.top_p,
-            stop_tokens=stop_sequences,
-        )
+        # Agentic loop: continue generation until FINAL ANSWER or max iterations
+        full_response = ""
+        current_prompt = prompt
+        iteration = 0
 
-        return GenerationResponse(content=content)
+        while iteration < MAX_AGENT_ITERATIONS:
+            iteration += 1
+            logger.info(f"Agent iteration {iteration}/{MAX_AGENT_ITERATIONS}")
+
+            # Generate next chunk
+            chunk = await manager.generate(
+                prompt=current_prompt,
+                alias="default",
+                max_new_tokens=request.max_tokens or 4096,
+                temperature=request.temperature or 0.7,
+                top_p=request.top_p or 1.0,
+                stop_tokens=stop_sequences,
+            )
+
+            full_response += chunk
+            logger.info(f"Generated chunk ({len(chunk)} chars): {chunk[:100]}...")
+
+            # Check if we've reached the final answer
+            if "### FINAL ANSWER" in full_response or "FINAL ANSWER" in chunk:
+                logger.info("Reached FINAL ANSWER, stopping agent loop")
+                break
+
+            # Check if there's a function call to handle
+            func_call = extract_function_call(chunk)
+            if func_call:
+                func_name, func_params = func_call
+                logger.info(f"Detected function call: {func_name}({func_params})")
+
+                # Generate mock output
+                output_id = generate_output_id()
+                mock_result = generate_mock_output(func_name, func_params)
+                output_line = f"\nOutput[{output_id}]: {mock_result}\n"
+
+                # Add to response and continue prompt
+                full_response += output_line
+                current_prompt = current_prompt + chunk + output_line
+
+                logger.info(f"Added mock output: {output_line.strip()}")
+            else:
+                # No function call and no final answer - might be stuck
+                logger.warning("No function call detected and no FINAL ANSWER, stopping")
+                break
+
+        return GenerationResponse(content=full_response)
 
     except Exception as e:
         logger.error(f"Generation failed: {e}")

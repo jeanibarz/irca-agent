@@ -1,0 +1,15 @@
+{
+  "id": "f203eeed-97a5-4b64-8677-e0ad75a73618",
+  "title": "What is the weather like in Pa...",
+  "updated_at": "2026-01-17T11:41:00.714001",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is the weather like in Paris ?"
+    },
+    {
+      "role": "assistant",
+      "content": "### ITERATIVE RESOLUTION CYCLE\nThought: To answer the user's request, I need to know the weather in Paris.\nAction choice: call function\nCall function: {\"name\": \"get_weather\", \"parameters\": {\"location\": \"Paris\"}}"
+    }
+  ]
+}

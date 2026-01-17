@@ -55,6 +55,10 @@
 | **Diversity Evaluation Format Mismatch** | Perplexity computed on IRCA-formatted text doesn't reflect finetuned model performance because the model was trained on chat-template-formatted text. For accurate evaluation, convert to chat template before computing perplexity. | 2026-01-17 |
 | **Two Parallel Augmentation Systems** | `src/augmentation/` and `src/formatting/` have **different** step registries. `augmentation` has: translate, shuffle_functions, newline_variation. `formatting` adds: indent_functions. When writing tests, ensure you use step types valid for the specific module being tested. | 2026-01-17 |
 | **Running Multiple GPU Tasks in Parallel** | NEVER run multiple GPU-intensive tasks (training, evaluation, inference) concurrently with background processes. The system cannot handle multiple models loaded in GPU memory. Always run sequentially and wait for one to complete before starting another. | 2026-01-17 |
+| **JSON Format Mismatch Between Training and Inference** | Training data may use compact JSON (no indentation), but inference code might use pretty-printed JSON (`indent=4`). This causes format mismatch that confuses fine-tuned models. Always use `json.dumps(data, separators=(",", ": "))` to match training format. | 2026-01-17 |
+| **Qwen3 vs Qwen2.5 Chat Templates** | Qwen3 models automatically add `<think></think>` tags around reasoning. Qwen2.5 does NOT have these tags. Using the wrong tokenizer causes unexpected output format. Always verify tokenizer matches the actual base model used. | 2026-01-17 |
+| **Trusting experiment.json Over adapter_config.json** | The `experiment.json` metadata file can be outdated or incorrect. The authoritative source for the base model is `adapter_config.json` in the model directory (field: `base_model_name_or_path`). Always verify there when debugging format issues. | 2026-01-17 |
+| **Missing IRCA System Instructions in Inference** | Server endpoints may default to generic prompts like "You are a helpful assistant" instead of IRCA instructions. Fine-tuned IRCA models require the full IRCA prompt (including example) to produce correctly formatted output. | 2026-01-17 |
 
 
 ---
@@ -84,6 +88,10 @@
 - **Fair Augmentation Comparison**: When comparing augmented vs non-augmented training, control for **training steps** (compute budget), not epochs. If non-augmented has 152 samples and augmented has 436, use ~3 epochs for non-augmented and ~1 epoch for augmented to match step count. This isolates augmentation effect from "more training" effect.
 - **Overfitting Diagnostics**: Always report BOTH train and test perplexity. The generalization gap `(test_ppl - train_ppl) / train_ppl` reveals whether model is overfitting. If non-augmented has large gap but augmented doesn't, augmentation helps by preventing overfitting.
 - **Checkpoint Analysis for Learning Curves**: Save intermediate checkpoints (e.g., every epoch) to analyze learning dynamics. Comparing train/test loss at each checkpoint reveals when overfitting begins.
+- **Verify Base Model via adapter_config.json**: When debugging inference format issues, always check `adapter_config.json` (field: `base_model_name_or_path`) to confirm the actual base model. Don't trust experiment metadata files.
+- **Agentic Loop for Multi-Step Function Calling**: When models stop at function calls (due to `<|wait|>` stop sequence), implement an agentic loop: (1) detect function call pattern in output, (2) add mock/real function output, (3) continue generation until FINAL ANSWER or max iterations. This enables complete IRCA cycles.
+- **Compact JSON for Training/Inference Consistency**: Use `json.dumps(data, separators=(",", ": "))` (compact, no indent) for function definitions in both training and inference. Pretty-printed JSON with `indent=4` creates a format mismatch that confuses fine-tuned models.
+- **IRCA System Instructions with Example**: For fine-tuned IRCA models, the inference prompt must include the full IRCA instructions with a complete example. Without this, models produce generic conversational output instead of the Thought/Action/Call function format.
 
 
 ---
@@ -198,3 +206,12 @@ CLEANUP: Remove entries older than 7 days
 - **Results**: Augmentation does NOT improve test perplexity. Augmented model is 6.7% worse on English-only test. Both perform similarly on multilingual test.
 - Added "Running Multiple GPU Tasks in Parallel" to Common Mistakes (lesson from OOM when running concurrent evaluations).
 - Updated CLAUDE.md with GPU Memory Limitation critical constraint.
+
+### Session: Playground Inference Debugging (2026-01-17)
+- Debugged IRCA model not producing correct format in playground.
+- Root cause: (1) Missing IRCA system instructions, (2) JSON format mismatch (pretty vs compact).
+- Fixed `src/server/routers/generation.py` with `DEFAULT_IRCA_INSTRUCTIONS` constant.
+- Changed JSON formatting from `indent=4` to `separators=(",", ": ")` for compact format.
+- Implemented agentic loop for multi-step function calling with mock outputs.
+- Added 4 new entries to Common Mistakes: JSON format mismatch, Qwen3 vs Qwen2.5 templates, trusting experiment.json, missing IRCA instructions.
+- Added 4 new entries to Patterns That Work: verify via adapter_config, agentic loop, compact JSON, IRCA instructions with example.
