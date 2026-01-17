@@ -70,12 +70,13 @@ async def generate_chat_completion(request: GenerationRequest) -> GenerationResp
         system_instruction = DEFAULT_IRCA_INSTRUCTIONS
 
     # Convert functions to expected dict format if present
+    # IMPORTANT: Use compact JSON (no indent) to match training data format
     functions_json = "[]"
     if request.functions:
         functions_list = [f.dict() for f in request.functions]
         # remove None values to be clean
         functions_list = [{k: v for k, v in f.items() if v is not None} for f in functions_list]
-        functions_json = json.dumps(functions_list, indent=4)
+        functions_json = json.dumps(functions_list, separators=(",", ": "))
 
     # Get tokenizer from loaded model to apply proper chat template
     tokenizer = manager.tokenizers.get("default")
