@@ -250,6 +250,31 @@ poetry run irca finetune run \
 
 ## Critical Constraints
 
+### Never Commit Datasets or Models
+
+**NEVER commit datasets or models to git.** These are large binary files that should be stored externally.
+
+**What is excluded (via .gitignore):**
+- `datasets/` - All dataset files
+- `models/` - All model files (base models, finetuned models, checkpoints)
+- `experiments/**/data-*.arrow` - Experiment dataset arrow files
+- `experiments/**/cache-*.arrow` - Experiment cache files
+- `experiments/**/models/` - Experiment model checkpoints
+- `*.safetensors`, `*.bin`, `*.gguf` - Model weight files
+
+**If you need to share models/datasets:**
+- Push to HuggingFace Hub using `--push-to-hub` flag
+- Or store in external cloud storage and document the location
+
+**Correct approach:**
+```bash
+# Models and datasets are gitignored - only commit code and configs
+git add src/ configs/ docs/
+git commit -m "feat: add new feature"
+```
+
+---
+
 ### GPU Memory Limitation
 
 **NEVER run multiple GPU-intensive tasks concurrently.** The system cannot handle multiple models loaded in GPU memory at the same time.
