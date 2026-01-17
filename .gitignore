@@ -28,6 +28,7 @@ Thumbs.db
 testrun/
 output/
 temp/
+data/sessions/
 
 # Robocorp
 .rpa/
@@ -73,6 +74,7 @@ inhuman-*/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+unsloth_compiled_cache/
 
 # Coverage reports
 .coverage
