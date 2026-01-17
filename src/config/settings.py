@@ -6,7 +6,7 @@ Use `get_settings()` to get a cached singleton instance.
 """
 
 import logging
-from functools import lru_cache
+import threading
 from pathlib import Path
 from typing import Any, Literal
 
@@ -21,6 +21,11 @@ class ModelConfig(BaseSettings):
 
     base_model: str
     model_name: str
+
+
+# FM-05: Import centralized model mapping (single source of truth)
+# Import here to avoid circular dependency with core.constants
+from src.core.constants import UNSLOTH_MODEL_MAPPING  # noqa: E402
 
 
 class Settings(BaseSettings):
@@ -107,26 +112,28 @@ class Settings(BaseSettings):
     )
 
     # LoRA Configuration
+    # Note: Lower rank (16) is recommended for Unsloth backend for memory efficiency.
+    # Higher ranks (64) require more VRAM and may cause OOM on 24GB GPUs.
     lora_r: int = Field(
-        default=64,
-        description="LoRA rank (r parameter)",
+        default=16,
+        description="LoRA rank (r parameter). Use 16 for Unsloth, up to 64 for TRL with high VRAM.",
         ge=1,
     )
     lora_alpha: int = Field(
-        default=32,
-        description="LoRA alpha parameter",
+        default=16,
+        description="LoRA alpha parameter. Common practice: alpha = r",
         ge=1,
     )
     lora_dropout: float = Field(
-        default=0.05,
-        description="LoRA dropout rate",
+        default=0.0,
+        description="LoRA dropout rate. Unsloth recommends 0 for speed.",
         ge=0.0,
         le=1.0,
     )
 
     # Training Parameters
     num_train_epochs: int = Field(
-        default=5,
+        default=3,
         description="Number of training epochs",
         ge=1,
     )
@@ -136,9 +143,34 @@ class Settings(BaseSettings):
         gt=0,
     )
     max_seq_length: int = Field(
-        default=4096,
-        description="Maximum sequence length for training",
+        default=2048,
+        description="Maximum sequence length for training. Use 1024 for memory efficiency.",
         ge=512,
+    )
+
+    # ===========================================
+    # Server Configuration
+    # ===========================================
+    server_host: str = Field(
+        default="0.0.0.0",
+        description="Host address for the server to bind to",
+    )
+    server_port: int = Field(
+        default=8000,
+        description="Port for the server to listen on",
+        ge=1,
+        le=65535,
+    )
+    server_idle_timeout: int = Field(
+        default=30,
+        description="Auto-eject model after N minutes of inactivity (0=disabled)",
+        ge=0,
+    )
+    generation_timeout_seconds: int = Field(
+        default=120,
+        description="Timeout in seconds for a single model generation call (FM-17)",
+        ge=10,
+        le=600,
     )
 
     # ===========================================
@@ -254,12 +286,8 @@ class Settings(BaseSettings):
                 "model_name": f"Qwen3-8B_irca_agent_{self.version}",
             },
             "qwen3-4b": {
-                "base_model": "Qwen/Qwen3-4B",
-                "model_name": f"Qwen3-4B_irca_agent_{self.version}",
-            },
-            "ministral-3b": {
-                "base_model": "mistralai/Ministral-3-3B-Instruct-2512",
-                "model_name": f"Ministral-3B_irca_agent_{self.version}",
+                "base_model": "Qwen/Qwen3-4B-Instruct-2507",
+                "model_name": f"Qwen3-4B-Instruct_irca_agent_{self.version}",
             },
         }
 
@@ -321,6 +349,35 @@ class Settings(BaseSettings):
             "output_dir": str(self.finetuned_models_path / model_config["model_name"]),
         }
 
+    def get_unsloth_model_name(self, model_type: str | None = None) -> str:
+        """
+        Get Unsloth-optimized model name for a model type.
+
+        Unsloth provides pre-quantized 4-bit models that use optimized kernels
+        for 70% less VRAM and 2x faster training.
+
+        Args:
+            model_type: One of 'mistral', 'qwen3-4b', etc.
+                       Uses default_model_type if None.
+
+        Returns:
+            Unsloth model name (e.g., 'unsloth/Qwen3-4B-unsloth-bnb-4bit').
+
+        Raises:
+            ValueError: If no Unsloth mapping exists for the model type.
+        """
+        model_type = model_type or self.default_model_type
+
+        if model_type not in UNSLOTH_MODEL_MAPPING:
+            available = list(UNSLOTH_MODEL_MAPPING.keys())
+            raise ValueError(
+                f"No Unsloth model mapping for '{model_type}'. "
+                f"Available: {available}. "
+                f"Use --backend trl for unsupported models."
+            )
+
+        return UNSLOTH_MODEL_MAPPING[model_type]
+
     @field_validator("workspace_dir", "models_dir", "datasets_dir", "finetuned_models_dir", mode="before")
     @classmethod
     def validate_path(cls, v: Any) -> Any:
@@ -330,15 +387,34 @@ class Settings(BaseSettings):
         return v
 
 
-@lru_cache
+# FM-03: Thread-safe singleton for settings
+_settings_lock = threading.Lock()
+_settings_instance: Settings | None = None
+
+
 def get_settings() -> Settings:
     """
-    Get cached settings instance.
+    Get cached settings instance with thread-safe initialization.
 
-    This function is cached, so it only loads settings once.
-    Call `get_settings.cache_clear()` to reload settings.
+    This function uses double-checked locking to ensure thread safety
+    while minimizing lock contention after initialization.
+
+    Call `clear_settings_cache()` to reload settings.
 
     Returns:
         Settings instance with all configuration.
     """
-    return Settings()
+    global _settings_instance
+    if _settings_instance is None:
+        with _settings_lock:
+            # Double-check after acquiring lock
+            if _settings_instance is None:
+                _settings_instance = Settings()
+    return _settings_instance
+
+
+def clear_settings_cache() -> None:
+    """Clear the settings cache, forcing reload on next get_settings() call."""
+    global _settings_instance
+    with _settings_lock:
+        _settings_instance = None
