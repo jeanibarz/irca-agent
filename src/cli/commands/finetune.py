@@ -367,8 +367,8 @@ def finetune() -> None:
 @click.option(
     "--backend",
     type=click.Choice(["unsloth", "trl"]),
-    default="unsloth",
-    help="Training backend: unsloth (70%% less VRAM, 2x faster) or trl (standard)",
+    default="trl",
+    help="Training backend: trl (default, reliable) or unsloth (experimental, max 2048 seq length)",
 )
 @click.option(
     "--epochs",
@@ -436,8 +436,8 @@ def finetune() -> None:
 @click.option(
     "--max-seq-length",
     type=int,
-    default=1024,
-    help="Maximum sequence length for training. Default: 1024 (memory efficient)",
+    default=4096,
+    help="Maximum sequence length for training. Default: 4096 (use 2048 for Unsloth backend)",
 )
 @click.option(
     "--no-wandb",
@@ -470,18 +470,20 @@ def run(
 
     Two backends are available:
 
-    - unsloth (default): Uses Unsloth's optimized kernels for 70% less VRAM
-      and 2x faster training. Requires ~6GB VRAM for 4B models.
+    - trl (default): Standard TRL/BitsAndBytes training. Reliable, supports
+      sequences up to 4096 tokens. Uses ~14GB VRAM for 4B models at max length.
 
-    - trl: Standard TRL/BitsAndBytes training. Requires ~24GB VRAM for 4B models.
+    - unsloth (experimental): Uses Unsloth's optimized kernels for ~6GB VRAM.
+      WARNING: Has gradient checkpointing issues with sequences >2048 tokens.
+      Use --max-seq-length 2048 if using this backend.
 
     Examples:
 
-        # Finetune with Unsloth (default, memory-efficient)
+        # Finetune with TRL (default, reliable, full sequence support)
         irca finetune run -m qwen3-4b -d ./datasets/my-dataset --epochs 3
 
-        # Finetune with TRL backend (if Unsloth unavailable)
-        irca finetune run -m qwen3-4b -d ./datasets/my-dataset --backend trl
+        # Finetune with Unsloth backend (memory-efficient but limited to 2048 seq)
+        irca finetune run -m qwen3-4b -d ./datasets/my-dataset --backend unsloth --max-seq-length 2048
 
         # Finetune and push to HuggingFace Hub
         irca finetune run --push-to-hub

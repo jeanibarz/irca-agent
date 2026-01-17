@@ -143,8 +143,8 @@ class Settings(BaseSettings):
         gt=0,
     )
     max_seq_length: int = Field(
-        default=2048,
-        description="Maximum sequence length for training. Use 1024 for memory efficiency.",
+        default=4096,
+        description="Maximum sequence length for training. Use 2048 max for Unsloth backend.",
         ge=512,
     )
 

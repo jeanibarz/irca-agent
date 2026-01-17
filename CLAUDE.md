@@ -1293,7 +1293,7 @@ poetry run irca dataset diversity \
 
 **Purpose**: Train model using Q-LoRA on formatted dataset.
 
-**Command** (default: Unsloth backend, 70% less VRAM):
+**Command** (default: TRL backend):
 ```bash
 poetry run irca finetune run \
   -m qwen3-4b \
@@ -1301,33 +1301,46 @@ poetry run irca finetune run \
   --epochs 3
 ```
 
-**Command** (TRL backend, for environments without Unsloth):
+**Command** (Unsloth backend, memory-efficient but limited):
 ```bash
 poetry run irca finetune run \
   -m qwen3-4b \
   -d datasets/irca_agent_dataset_v5-5acc-formatted-augmented \
   --epochs 3 \
-  --backend trl
+  --backend unsloth \
+  --max-seq-length 2048
 ```
 
-**Default parameters** (optimized for Unsloth on 24GB GPU):
+**Default parameters**:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--lora-r` | 16 | LoRA rank. Use 16 for memory efficiency, up to 64 if VRAM allows |
-| `--max-seq-length` | 1024 | Max sequence length. Use 2048 only if needed |
+| `--backend` | trl | Training backend (trl or unsloth) |
+| `--max-seq-length` | 4096 | Max sequence length (use 2048 for Unsloth) |
+| `--lora-r` | 16 | LoRA rank |
 | `--batch-size` | 4 | Effective batch size (via gradient accumulation) |
 | `--learning-rate` | 2e-4 | Learning rate |
 | `--seed` | 42 | Random seed for reproducibility |
 
-**Memory considerations**:
-- `lora_r=16, max_seq=1024`: ~6GB VRAM (recommended for Unsloth)
-- `lora_r=64, max_seq=2048`: May cause OOM on 24GB GPUs
-- If you get CUDA OOM errors, reduce `--lora-r` and/or `--max-seq-length`
+**Memory usage** (Qwen3-4B, batch=1, lora_r=16):
+
+| Sequence Length | TRL Backend | Unsloth Backend |
+|-----------------|-------------|-----------------|
+| 1024 tokens | ~6 GB | ~5 GB |
+| 2048 tokens | ~9 GB | ~7 GB |
+| 3000 tokens | ~12 GB | ❌ OOM |
+| 4096 tokens | ~14 GB | ❌ OOM |
 
 **Available backends**:
-- `unsloth` (default): Uses Unsloth's optimized kernels. ~6GB VRAM for 4B models.
-- `trl`: Standard TRL/BitsAndBytes. ~24GB VRAM for 4B models.
+- `trl` (default): Standard TRL/PEFT/BitsAndBytes. Reliable, supports full 4096 sequence length.
+- `unsloth` (experimental): Memory-efficient but has gradient checkpointing bugs with sequences >2048.
+
+**Why TRL is the default** (not Unsloth):
+Unsloth's custom gradient checkpointing (`unsloth_zoo/gradient_checkpointing.py`) has memory
+issues with long sequences (>2048 tokens), causing OOM or slow shared memory usage. Standard
+HF/PEFT with gradient checkpointing handles 4096 tokens reliably at ~14GB VRAM. Since our
+dataset has samples up to 3846 tokens (P99=2808), we need full sequence support to avoid
+truncating training data.
 
 **Available models**: `mistral`, `mistral-v3`, `tinyllama`, `qwen-7b`, `qwen-4b`, `qwen-14b`, `qwen3-8b`, `qwen3-4b`
 
@@ -1399,9 +1412,8 @@ poetry run irca finetune run \
 | Format dataset (baseline) | `irca dataset format -i INPUT -o OUTPUT --no-augment` |
 | Diversity (single) | `irca dataset diversity -d DATASET --quick` |
 | Diversity (compare) | `irca dataset diversity -o ORIGINAL -a AUGMENTED --quick` |
-| Finetune (Unsloth, default) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3` |
-| Finetune (memory-efficient) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3 --lora-r 16 --max-seq-length 1024` |
-| Finetune (TRL backend) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3 --backend trl` |
+| Finetune (TRL, default) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3` |
+| Finetune (Unsloth, limited) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3 --backend unsloth --max-seq-length 2048` |
 | Finetune (no W&B) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3 --no-wandb` |
 | Eval checkpoints (Unsloth) | `irca experiment eval-checkpoints -c CHECKPOINT_DIR --train-set TRAIN --test-set TEST` |
 | Inspect dataset | `irca dataset inspect DATASET` |
