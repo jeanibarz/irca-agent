@@ -150,6 +150,99 @@ def get_device() -> str:
         return "cpu"
 
 
+def load_model_with_unsloth(
+    model_name: str,
+    adapter_path: str | None = None,
+    max_seq_length: int = 2048,
+) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
+    """
+    Memory-efficient model loading via Unsloth.
+
+    Uses 70% less VRAM than standard loading by leveraging Unsloth's
+    optimized kernels and pre-quantized 4-bit models.
+
+    Args:
+        model_name: Unsloth-optimized model name (e.g., 'unsloth/Qwen3-4B-unsloth-bnb-4bit')
+                   or standard model name (Unsloth will optimize it).
+        adapter_path: Optional path to LoRA adapter to apply.
+        max_seq_length: Maximum sequence length for the model.
+
+    Returns:
+        Tuple of (model, tokenizer).
+
+    Raises:
+        ImportError: If Unsloth is not installed.
+
+    Example:
+        # Load base model
+        model, tokenizer = load_model_with_unsloth("unsloth/Qwen3-4B-unsloth-bnb-4bit")
+
+        # Load with LoRA adapter
+        model, tokenizer = load_model_with_unsloth(
+            "unsloth/Qwen3-4B-unsloth-bnb-4bit",
+            adapter_path="models/my-adapter"
+        )
+    """
+    import os
+
+    from src.core.constants import ENV_TORCHDYNAMO_DISABLE
+
+    # Set environment variables for Unsloth compatibility
+    os.environ[ENV_TORCHDYNAMO_DISABLE] = "1"
+    os.environ["UNSLOTH_RETURN_LOGITS"] = "1"  # Required for perplexity
+
+    try:
+        from unsloth import FastModel
+    except ImportError as e:
+        raise ImportError(
+            "Unsloth is required for memory-efficient loading. "
+            "Install with: pip install unsloth"
+        ) from e
+
+    logger.info(f"Loading model with Unsloth: {model_name}")
+
+    # Load model with Unsloth's optimizations
+    model, tokenizer = FastModel.from_pretrained(
+        model_name=model_name,
+        max_seq_length=max_seq_length,
+        load_in_4bit=True,
+        load_in_8bit=False,
+        full_finetuning=False,
+    )
+
+    # Apply LoRA adapter if provided
+    if adapter_path:
+        try:
+            from peft import PeftModel
+        except ImportError as e:
+            # FM-08: Cleanup GPU memory before raising
+            import torch
+
+            torch.cuda.empty_cache()
+            raise ImportError(
+                "PEFT is required for loading LoRA adapters. "
+                "Install with: pip install peft"
+            ) from e
+
+        logger.info(f"Applying LoRA adapter from {adapter_path}")
+        try:
+            model = PeftModel.from_pretrained(model, adapter_path)
+        except Exception as e:
+            # FM-08: Cleanup GPU memory on adapter loading failure
+            import torch
+
+            logger.error(f"Failed to load adapter from {adapter_path}: {e}")
+            torch.cuda.empty_cache()
+            raise RuntimeError(
+                f"Failed to load LoRA adapter from {adapter_path}. "
+                f"Original error: {e}"
+            ) from e
+
+    model.eval()
+
+    return model, tokenizer
+
+
 def sample_texts(
     texts: list[str],
     sample_size: int,
@@ -220,6 +313,8 @@ def load_model_and_tokenizer(
     model_name: str,
     device: str = "auto",
     torch_dtype: str = "auto",
+    use_unsloth: bool = True,
+    max_seq_length: int = 2048,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """
     Load a model and tokenizer for perplexity computation.
@@ -231,16 +326,19 @@ def load_model_and_tokenizer(
         model_name: HuggingFace model name, local path, or LoRA adapter path.
         device: Device to load model on ("auto", "cuda", "mps", "cpu").
         torch_dtype: Torch dtype ("auto", "float16", "bfloat16", "float32").
+        use_unsloth: If True (default), use Unsloth for memory-efficient loading.
+                    Falls back to standard loading if Unsloth is unavailable.
+        max_seq_length: Maximum sequence length (used with Unsloth backend).
 
     Returns:
         Tuple of (model, tokenizer).
 
     Example:
-        # Load a full model
-        model, tokenizer = load_model_and_tokenizer("gpt2")
-
-        # Load a LoRA adapter (auto-detects base model)
+        # Load with Unsloth (memory-efficient, default)
         model, tokenizer = load_model_and_tokenizer("models/my-lora-adapter")
+
+        # Load with standard HF loader
+        model, tokenizer = load_model_and_tokenizer("gpt2", use_unsloth=False)
     """
     try:
         import torch
@@ -250,6 +348,43 @@ def load_model_and_tokenizer(
             "transformers and torch are required for perplexity computation. "
             "Install them with: pip install transformers torch"
         ) from e
+
+    # Try Unsloth for memory-efficient loading (especially for LoRA adapters)
+    if use_unsloth and is_lora_adapter(model_name):
+        try:
+            base_model_name = get_lora_base_model(model_name)
+
+            # Try to get Unsloth-optimized model name
+            try:
+                from src.config.settings import UNSLOTH_MODEL_MAPPING
+
+                # Find matching Unsloth model based on base model name
+                unsloth_model = None
+                for model_type, unsloth_name in UNSLOTH_MODEL_MAPPING.items():
+                    # Match by model family (e.g., "Qwen3-4B" in base model name)
+                    if any(x in base_model_name.lower() for x in [model_type.replace("-", "").lower()]):
+                        unsloth_model = unsloth_name
+                        break
+
+                # Fallback: use base model directly with FastModel
+                if unsloth_model is None:
+                    unsloth_model = base_model_name
+                    logger.info(f"No Unsloth mapping for {base_model_name}, using directly")
+
+            except ImportError:
+                unsloth_model = base_model_name
+
+            logger.info(f"Using Unsloth backend for LoRA adapter: {model_name}")
+            return load_model_with_unsloth(
+                model_name=unsloth_model,
+                adapter_path=model_name,
+                max_seq_length=max_seq_length,
+            )
+
+        except ImportError:
+            logger.warning("Unsloth not available, falling back to standard loading")
+        except Exception as e:
+            logger.warning(f"Unsloth loading failed: {e}, falling back to standard loading")
 
     # Resolve device
     if device == "auto":
@@ -264,7 +399,7 @@ def load_model_and_tokenizer(
     }
     dtype = dtype_map.get(torch_dtype, "auto")
 
-    # Check if this is a LoRA adapter
+    # Check if this is a LoRA adapter (standard loading path)
     if is_lora_adapter(model_name):
         return _load_lora_model(model_name, device, dtype)
 
@@ -496,23 +631,9 @@ class PerplexityCache:
         }
 
 
-# Completion extraction markers - covers multiple model formats
-# Order matters: more specific patterns should come before generic ones
-COMPLETION_MARKERS = [
-    # IRCA format markers
-    "### ITERATIVE RESOLUTION CYCLE",  # Primary IRCA marker
-    "### ASSISTANT",  # Alternative
-    "### RESPONSE",  # Alternative
-    # Mistral/Llama2 instruction format
-    "[/INST]",
-    # ChatML format (Qwen, Yi, some Llama variants)
-    "<|im_start|>assistant\n",  # Qwen with newline
-    "<|im_start|>assistant",  # Qwen without newline
-    "<|assistant|>",  # Generic ChatML
-    # Llama3 format
-    "<|start_header_id|>assistant<|end_header_id|>\n",  # Full Llama3 marker
-    "<|start_header_id|>assistant<|end_header_id|>",
-]
+# Completion extraction markers - import from centralized constants
+# Kept here for backwards compatibility; prefer importing from src.core.constants
+from src.core.constants import ALL_COMPLETION_MARKERS as COMPLETION_MARKERS
 
 
 def extract_completion(

@@ -1,15 +1,23 @@
 """
-Model Fine-tuning Script for IRCA-Agent
+Model Fine-tuning Script for IRCA-Agent (Legacy)
+
+DEPRECATED: This module uses the standard transformers backend which requires
+~24GB VRAM for 4B models. For 70% less VRAM and 2x faster training, use:
+
+    irca finetune run -m qwen3-4b -d YOUR_DATASET --epochs 3
+
+The CLI uses Unsloth by default for optimized training.
 
 Fine-tunes a language model using LoRA/QLoRA for function-calling capabilities.
 
-Usage:
+Usage (legacy):
     python -m src.finetuning.model_finetuning --model_type mistral
 """
 
 import argparse
 import logging
 import sys
+import warnings
 from typing import Any
 
 import huggingface_hub
@@ -17,6 +25,15 @@ import peft
 import torch
 import transformers
 import trl
+
+# Emit deprecation warning
+warnings.warn(
+    "src.finetuning.model_finetuning is deprecated. "
+    "Use 'irca finetune run' CLI command instead, which uses Unsloth for "
+    "70% less VRAM and 2x faster training.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 import datasets  # type: ignore
 from src.config import get_settings

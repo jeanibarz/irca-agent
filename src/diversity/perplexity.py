@@ -197,6 +197,7 @@ def compute_perplexity_profile(
     completion_markers: list[str] | None = None,
     apply_chat_template: bool = True,
     return_perplexities: bool = False,
+    use_unsloth: bool = True,
 ) -> dict[str, Any]:
     """
     Compute perplexity statistics for a dataset.
@@ -226,6 +227,8 @@ def compute_perplexity_profile(
                             format. Set to False only for raw text evaluation.
         return_perplexities: If True, include raw perplexity values in output
                             for bootstrap CI computation.
+        use_unsloth: If True (default), use Unsloth for memory-efficient loading.
+                    Uses 70% less VRAM. Falls back to standard loading if unavailable.
 
     Returns:
         Dictionary with perplexity statistics:
@@ -281,7 +284,7 @@ def compute_perplexity_profile(
         device = get_device()
 
     # Load model
-    model, tokenizer = load_model_and_tokenizer(model_name, device=device)
+    model, tokenizer = load_model_and_tokenizer(model_name, device=device, use_unsloth=use_unsloth)
 
     # Get model-specific completion markers if applying chat template
     if apply_chat_template and completion_markers is None:
