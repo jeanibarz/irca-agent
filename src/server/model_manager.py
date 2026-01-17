@@ -298,7 +298,7 @@ class ModelManager:
         unsloth_model_id: str,
         broadcaster: Any = None,
         alias: str = "default",
-        max_seq_length: int = 2048,
+        max_seq_length: int = 4096,
     ) -> tuple[Any, Any]:
         """
         Load base model using Unsloth's FastModel for optimized inference.

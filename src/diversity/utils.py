@@ -153,7 +153,7 @@ def get_device() -> str:
 def load_model_with_unsloth(
     model_name: str,
     adapter_path: str | None = None,
-    max_seq_length: int = 2048,
+    max_seq_length: int = 4096,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """
     Memory-efficient model loading via Unsloth.
@@ -314,7 +314,7 @@ def load_model_and_tokenizer(
     device: str = "auto",
     torch_dtype: str = "auto",
     use_unsloth: bool = True,
-    max_seq_length: int = 2048,
+    max_seq_length: int = 4096,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """
     Load a model and tokenizer for perplexity computation.

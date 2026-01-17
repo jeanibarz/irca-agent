@@ -97,7 +97,7 @@ def evaluate_augmentation_effectiveness(
             "per_device_train_batch_size": 4,
             "gradient_accumulation_steps": 4,
             "learning_rate": 2e-4,
-            "max_seq_length": 2048,
+            "max_seq_length": 4096,
             "lora_r": 16,
             "lora_alpha": 32,
         }
@@ -225,7 +225,7 @@ def _finetune_model(
         per_device_train_batch_size=config.get("per_device_train_batch_size", 4),
         gradient_accumulation_steps=config.get("gradient_accumulation_steps", 4),
         learning_rate=config.get("learning_rate", 2e-4),
-        max_seq_length=config.get("max_seq_length", 2048),
+        max_seq_length=config.get("max_seq_length", 4096),
         lora_r=config.get("lora_r", 16),
         lora_alpha=config.get("lora_alpha", 32),
     )
