@@ -1,0 +1,10 @@
+{
+  "model": "experiments/exp001-augmentation-impact/models/baseline",
+  "dataset": "experiments/exp001-augmentation-impact/test_formatted",
+  "n_samples": 38,
+  "perplexity_mean": 1.3285201335244825,
+  "perplexity_std": 0.17267650024919293,
+  "perplexity_median": 1.2866884529329963,
+  "perplexity_min": 1.105646330888013,
+  "perplexity_max": 1.7726426218219113
+}
