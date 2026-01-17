@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -12,6 +13,88 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 settings = get_settings()
+
+
+def _validate_adapter_id(adapter_id: str) -> None:
+    """
+    FM-36: Validate adapter ID to prevent path traversal attacks.
+
+    Ensures adapter_id is a safe directory name without path components.
+
+    Raises:
+        HTTPException: 400 if adapter_id contains path traversal attempts
+    """
+    # Reject empty IDs
+    if not adapter_id or not adapter_id.strip():
+        raise HTTPException(status_code=400, detail="Adapter ID cannot be empty")
+
+    # Reject absolute paths
+    if Path(adapter_id).is_absolute():
+        logger.warning(f"Absolute path rejected as adapter_id: {adapter_id!r}")
+        raise HTTPException(status_code=400, detail="Adapter ID cannot be an absolute path")
+
+    # Reject path traversal sequences
+    if ".." in adapter_id or adapter_id.startswith("/") or adapter_id.startswith("\\"):
+        logger.warning(f"Path traversal rejected in adapter_id: {adapter_id!r}")
+        raise HTTPException(status_code=400, detail="Invalid adapter ID format")
+
+    # Only allow safe characters: alphanumeric, hyphen, underscore, dot (for versions)
+    # This also allows HuggingFace-style IDs like "username/model-name"
+    if not re.match(r"^[a-zA-Z0-9_\-./]+$", adapter_id):
+        logger.warning(f"Invalid characters in adapter_id: {adapter_id!r}")
+        raise HTTPException(status_code=400, detail="Adapter ID contains invalid characters")
+
+
+# FM-42: Known safe model presets (from settings.py)
+ALLOWED_MODEL_PRESETS = {
+    "mistral",
+    "mistral-v3",
+    "tinyllama",
+    "qwen-7b",
+    "qwen-4b",
+    "qwen-14b",
+    "qwen3-8b",
+    "qwen3-4b",
+}
+
+# FM-42: Regex pattern for valid HuggingFace Hub model IDs
+# Format: "organization/model-name" or "organization/model-name-version"
+HF_MODEL_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-./]+$")
+
+
+def _validate_base_model_id(base_model_id: str) -> None:
+    """
+    FM-42: Validate base model ID to prevent loading arbitrary models.
+
+    Allows:
+    - Known model presets (mistral, qwen3-4b, etc.)
+    - Valid HuggingFace Hub IDs (org/model-name format)
+
+    Raises:
+        HTTPException: 400 if base_model_id is invalid
+    """
+    if not base_model_id or not base_model_id.strip():
+        raise HTTPException(status_code=400, detail="Base model ID cannot be empty")
+
+    # Allow known presets
+    if base_model_id.lower() in ALLOWED_MODEL_PRESETS:
+        return
+
+    # Allow valid HuggingFace Hub IDs
+    if HF_MODEL_ID_PATTERN.match(base_model_id):
+        # Additional check: reject if it looks like a path traversal
+        if ".." in base_model_id:
+            logger.warning(f"Path traversal rejected in base_model_id: {base_model_id!r}")
+            raise HTTPException(status_code=400, detail="Invalid base model ID format")
+        return
+
+    # Reject anything else
+    logger.warning(f"Invalid base_model_id rejected: {base_model_id!r}")
+    raise HTTPException(
+        status_code=400,
+        detail=f"Invalid base model ID. Use a preset ({', '.join(sorted(ALLOWED_MODEL_PRESETS))}) "
+        "or a valid HuggingFace Hub ID (e.g., 'Qwen/Qwen3-4B').",
+    )
 
 
 def get_adapter_base_model(adapter_path: str) -> str | None:
@@ -84,16 +167,28 @@ async def load_model(request: LoadModelRequest) -> dict[str, str]:
     """
     manager = ModelManager.get_instance()
     try:
+        _validate_base_model_id(request.base_model_id)  # FM-42: Validate model ID
+
         adapter_path = None
         base_model_id = request.base_model_id
 
         if request.adapter_id:
+            _validate_adapter_id(request.adapter_id)  # FM-36: Prevent path traversal
+
             finetuned_dir = settings.finetuned_models_path
             potential_path = finetuned_dir / request.adapter_id
+
+            # FM-36: Only allow loading from finetuned_models_path or HuggingFace Hub IDs
             if potential_path.exists():
                 adapter_path = str(potential_path)
+            elif "/" in request.adapter_id and not request.adapter_id.startswith("/"):
+                # Looks like a HuggingFace Hub ID (e.g., "username/model-name")
+                adapter_path = request.adapter_id
             else:
-                adapter_path = request.adapter_id  # Assume absolute or HF ID
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Adapter '{request.adapter_id}' not found in finetuned models directory",
+                )
 
             # Auto-detect base model from adapter config
             detected_base = get_adapter_base_model(adapter_path)

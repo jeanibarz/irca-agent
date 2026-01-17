@@ -1,8 +1,12 @@
 import asyncio
 import logging
+import threading
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# FM-06: Maximum queue size per subscriber to prevent memory exhaustion
+MAX_SUBSCRIBER_QUEUE_SIZE = 100
 
 
 class EventBroadcaster:
@@ -12,22 +16,30 @@ class EventBroadcaster:
     """
 
     _instance = None
+    _instance_lock = threading.Lock()  # FM-04: Thread-safe singleton
 
     def __init__(self) -> None:
-        self._subscribers: set[asyncio.Queue] = set()
+        self._subscribers: set[asyncio.Queue[str]] = set()
+        self._subscribers_lock = threading.Lock()  # FM-33: Protect set mutations
 
     @classmethod
     def get_instance(cls) -> "EventBroadcaster":
+        """Get singleton instance with thread-safe initialization (FM-04)."""
         if cls._instance is None:
-            cls._instance = EventBroadcaster()
+            with cls._instance_lock:
+                # Double-check after acquiring lock
+                if cls._instance is None:
+                    cls._instance = EventBroadcaster()
         return cls._instance
 
     async def subscribe(self) -> Any:
         """
         Yields generator allowing a client to subscribe to the event stream.
         """
-        q: asyncio.Queue = asyncio.Queue()
-        self._subscribers.add(q)
+        # FM-06: Use bounded queue to prevent memory exhaustion from slow consumers
+        q: asyncio.Queue[str] = asyncio.Queue(maxsize=MAX_SUBSCRIBER_QUEUE_SIZE)
+        with self._subscribers_lock:  # FM-33: Thread-safe add
+            self._subscribers.add(q)
         try:
             while True:
                 # Get message from queue
@@ -39,13 +51,18 @@ class EventBroadcaster:
             logger.info("Subscriber disconnected")
             raise
         finally:
-            self._subscribers.remove(q)
+            with self._subscribers_lock:  # FM-33: Thread-safe remove
+                self._subscribers.discard(q)  # Use discard to avoid KeyError if already removed
 
     def publish(self, event_type: str, data: dict[str, Any]) -> None:
         """
         Publish an event to all active subscribers.
         """
-        if not self._subscribers:
+        # FM-33: Take snapshot of subscribers to avoid iteration issues
+        with self._subscribers_lock:
+            subscribers_snapshot = list(self._subscribers)
+
+        if not subscribers_snapshot:
             return
 
         import json
@@ -54,5 +71,9 @@ class EventBroadcaster:
         payload = json.dumps(data)
         message = f"event: {event_type}\ndata: {payload}\n\n"
 
-        for q in self._subscribers:
-            q.put_nowait(message)
+        for q in subscribers_snapshot:
+            try:
+                q.put_nowait(message)
+            except asyncio.QueueFull:
+                # FM-06: Drop message for slow consumer rather than blocking/crashing
+                logger.warning("Subscriber queue full, dropping message")

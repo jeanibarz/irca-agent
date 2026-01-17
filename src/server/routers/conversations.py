@@ -13,6 +13,24 @@ router = APIRouter()
 DATA_DIR = Path("data/sessions")
 
 
+def _validate_conv_id(conv_id: str) -> None:
+    """
+    FM-34: Validate conversation ID to prevent path traversal attacks.
+
+    Ensures conv_id is a valid UUID format, rejecting any path components
+    like '../' or absolute paths that could escape DATA_DIR.
+
+    Raises:
+        HTTPException: 400 if conv_id is not a valid UUID
+    """
+    try:
+        # Parse as UUID - this validates format and rejects path traversal attempts
+        uuid.UUID(conv_id)
+    except ValueError:
+        logger.warning(f"Invalid conversation ID rejected: {conv_id!r}")
+        raise HTTPException(status_code=400, detail="Invalid conversation ID format")
+
+
 class Message(BaseModel):
     role: str
     content: str
@@ -73,6 +91,9 @@ async def create_conversation(req: CreateConversationRequest) -> Conversation:
 
     conversation = Conversation(id=conv_id, title=req.title or "New Chat", updated_at=now, messages=[])
 
+    # FM-35: Ensure DATA_DIR exists before writing
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
     file_path = DATA_DIR / f"{conv_id}.json"
     with open(file_path, "w") as f:
         json.dump(conversation.dict(), f, indent=2)
@@ -83,6 +104,8 @@ async def create_conversation(req: CreateConversationRequest) -> Conversation:
 @router.get("/conversations/{conv_id}", response_model=Conversation)
 async def get_conversation(conv_id: str) -> Conversation:
     """Get a specific conversation."""
+    _validate_conv_id(conv_id)  # FM-34: Prevent path traversal
+
     file_path = DATA_DIR / f"{conv_id}.json"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -95,6 +118,8 @@ async def get_conversation(conv_id: str) -> Conversation:
 @router.post("/conversations/{conv_id}", response_model=Conversation)
 async def update_conversation(conv_id: str, req: UpdateConversationRequest) -> Conversation:
     """Update conversation messages and optionally title."""
+    _validate_conv_id(conv_id)  # FM-34: Prevent path traversal
+
     file_path = DATA_DIR / f"{conv_id}.json"
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -123,6 +148,8 @@ async def update_conversation(conv_id: str, req: UpdateConversationRequest) -> C
 @router.delete("/conversations/{conv_id}")
 async def delete_conversation(conv_id: str) -> dict[str, str]:
     """Delete a conversation."""
+    _validate_conv_id(conv_id)  # FM-34: Prevent path traversal
+
     file_path = DATA_DIR / f"{conv_id}.json"
     if file_path.exists():
         file_path.unlink()

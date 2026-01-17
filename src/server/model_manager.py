@@ -1,8 +1,40 @@
+"""
+Model Manager for IRCA Playground Server.
+
+Handles model loading, inference, and GPU memory management with Unsloth optimization.
+"""
+
+# =============================================================================
+# CRITICAL: Environment variables MUST be set BEFORE any ML imports
+# This ensures Unsloth's optimization hooks can be applied correctly.
+# =============================================================================
+import os
+
+os.environ.setdefault("TORCHDYNAMO_DISABLE", "1")  # Set BEFORE any torch import
+
+# Standard library imports (safe to import before ML libs)
 import asyncio
+import json
 import logging
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
+# Import centralized Unsloth configuration
+# This may trigger Unsloth import if available
+from src.core.constants import (
+    BASE_TO_UNSLOTH,
+    ENV_TORCHDYNAMO_DISABLE,
+    UNSLOTH_MODEL_MAPPING,
+    get_unsloth_availability,
+    is_unsloth_disabled,
+)
+
+# Check Unsloth availability BEFORE importing other ML libraries
+_UNSLOTH_AVAILABLE, _UNSLOTH_UNAVAILABLE_REASON = get_unsloth_availability()
+
+# NOW import ML libraries (after Unsloth check)
 import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
@@ -12,8 +44,42 @@ from src.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+def _check_unsloth_available() -> bool:
+    """Check if Unsloth is available and not disabled."""
+    if is_unsloth_disabled():
+        logger.info("Unsloth disabled via IRCA_DISABLE_UNSLOTH environment variable")
+        return False
+    if _UNSLOTH_AVAILABLE:
+        logger.info("Unsloth available for optimized inference")
+        return True
+    else:
+        logger.info(f"Unsloth not available: {_UNSLOTH_UNAVAILABLE_REASON}")
+        return False
+
+
+def _detect_base_model_from_adapter(adapter_path: str) -> str | None:
+    """
+    Detect the base model from adapter config.
+
+    Reads adapter_config.json to find the base_model_name_or_path.
+    """
+    config_path = Path(adapter_path) / "adapter_config.json"
+    # FM-39: Avoid TOCTOU by using try/except instead of exists() check
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+        return config.get("base_model_name_or_path")
+    except FileNotFoundError:
+        # Config file doesn't exist - this is expected for some adapters
+        return None
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning(f"Failed to read adapter config: {e}")
+        return None
+
+
 class ModelManager:
     _instance = None
+    _instance_lock = threading.Lock()  # FM-03: Thread-safe singleton creation
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -27,11 +93,29 @@ class ModelManager:
 
         self._lock = asyncio.Lock()
 
+        # Idle tracking (FM-12 mitigation: use monotonic time)
+        self._last_activity: float = time.monotonic()
+
+        # Backend tracking: True if Unsloth is being used
+        self._using_unsloth: bool = _check_unsloth_available()
+
     @classmethod
     def get_instance(cls) -> "ModelManager":
+        """Get singleton instance with thread-safe initialization (FM-03)."""
         if cls._instance is None:
-            cls._instance = ModelManager()
+            with cls._instance_lock:
+                # Double-check after acquiring lock
+                if cls._instance is None:
+                    cls._instance = ModelManager()
         return cls._instance
+
+    def _update_activity(self) -> None:
+        """Update last activity timestamp (FM-2 mitigation: call BEFORE lock)."""
+        self._last_activity = time.monotonic()
+
+    def get_idle_seconds(self) -> int:
+        """Get seconds since last model activity."""
+        return int(time.monotonic() - self._last_activity)
 
     async def load_model(
         self, base_model_id: str, adapter_path: str | None = None, alias: str = "default"
@@ -43,10 +127,13 @@ class ModelManager:
 
         broadcaster = EventBroadcaster.get_instance()
 
-        if self._lock.locked():
-            raise RuntimeError("Model loading already in progress.")
+        # FM-43: Use atomic non-blocking lock acquisition instead of non-atomic locked() check
+        try:
+            await asyncio.wait_for(self._lock.acquire(), timeout=0.1)
+        except asyncio.TimeoutError:
+            raise RuntimeError("Model loading already in progress. Please wait for the current operation to complete.")
 
-        async with self._lock:
+        try:
             # Emit Start
             broadcaster.publish(
                 "model_progress", {"alias": alias, "step": "init", "message": "Initializing request..."}
@@ -66,21 +153,51 @@ class ModelManager:
             base_model_obj = self._find_existing_base_model(base_model_id)
             tokenizer_obj = self._find_existing_tokenizer(base_model_id)
 
+            # Determine which backend to use
+            use_unsloth = False
+            unsloth_model_name = None
+            if self._using_unsloth:
+                unsloth_model_name = self._get_unsloth_model_name(base_model_id, adapter_path)
+                if unsloth_model_name:
+                    use_unsloth = True
+                    logger.info(f"Using Unsloth backend with model: {unsloth_model_name}")
+                else:
+                    # FM-02: Explicit warning when falling back to standard backend
+                    logger.warning(f"No Unsloth mapping for {base_model_id}, using standard backend (higher VRAM)")
+                    broadcaster.publish(
+                        "model_progress",
+                        {
+                            "alias": alias,
+                            "step": "warning",
+                            "message": f"WARNING: No Unsloth optimization for {base_model_id}. "
+                            "Using standard backend (may require ~4x more VRAM).",
+                        },
+                    )
+
             if not base_model_obj:
+                backend_name = "Unsloth" if use_unsloth else "transformers"
                 broadcaster.publish(
                     "model_progress",
-                    {"alias": alias, "step": "download_base", "message": "Downloading/Loading base model..."},
+                    {"alias": alias, "step": "download_base", "message": f"Loading base model ({backend_name})..."},
                 )
-                logger.info(f"Loading new base model: {base_model_id}")
+                logger.info(f"Loading new base model: {base_model_id} (backend: {backend_name})")
 
-                # Run in thread with stderr interception (inside the method)
-                # We do NOT use _run_with_heartbeat here because it conflicts with the granular tqdm updates
-                base_model_obj, tokenizer_obj = await asyncio.to_thread(
-                    self._load_base_model_and_tokenizer,
-                    base_model_id,
-                    broadcaster,
-                    alias,
-                )
+                if use_unsloth and unsloth_model_name:
+                    # Use Unsloth for optimized loading
+                    base_model_obj, tokenizer_obj = await asyncio.to_thread(
+                        self._load_base_model_and_tokenizer_unsloth,
+                        unsloth_model_name,
+                        broadcaster,
+                        alias,
+                    )
+                else:
+                    # Fall back to standard transformers loading
+                    base_model_obj, tokenizer_obj = await asyncio.to_thread(
+                        self._load_base_model_and_tokenizer,
+                        base_model_id,
+                        broadcaster,
+                        alias,
+                    )
                 self.base_models[base_model_id] = base_model_obj
             else:
                 broadcaster.publish(
@@ -122,10 +239,16 @@ class ModelManager:
             # Update config tracking
             self.loaded_configs[alias] = {"base": base_model_id, "adapter": adapter_path}
 
+            # Update activity timestamp after loading
+            self._update_activity()
+
             broadcaster.publish(
                 "model_progress", {"alias": alias, "step": "done", "message": "Model loaded successfully."}
             )
             return self.models[alias], self.tokenizers[alias]
+        finally:
+            # FM-43: Always release the lock, even on exception
+            self._lock.release()
 
     def _find_existing_base_model(self, base_model_id: str) -> Any | None:
         return self.base_models.get(base_model_id)
@@ -136,6 +259,132 @@ class ModelManager:
             if config["base"] == base_model_id:
                 return self.tokenizers.get(alias)
         return None
+
+    def _get_unsloth_model_name(self, base_model_id: str, adapter_path: str | None = None) -> str | None:
+        """
+        Get the Unsloth-optimized model name for a base model.
+
+        Tries multiple strategies:
+        1. Direct lookup in UNSLOTH_MODEL_MAPPING by model type
+        2. Reverse lookup in BASE_TO_UNSLOTH by base model ID
+        3. Detect from adapter config if adapter_path provided
+
+        Returns None if no Unsloth mapping found.
+        """
+        # Strategy 1: Check if base_model_id is a model type (e.g., "qwen3-4b")
+        if base_model_id in UNSLOTH_MODEL_MAPPING:
+            return UNSLOTH_MODEL_MAPPING[base_model_id]
+
+        # Strategy 2: Check if it's already an Unsloth model
+        if base_model_id.startswith("unsloth/"):
+            return base_model_id
+
+        # Strategy 3: Reverse lookup from HuggingFace model ID
+        if base_model_id in BASE_TO_UNSLOTH:
+            return BASE_TO_UNSLOTH[base_model_id]
+
+        # Strategy 4: Detect base model from adapter config
+        if adapter_path:
+            detected_base = _detect_base_model_from_adapter(adapter_path)
+            if detected_base and detected_base in BASE_TO_UNSLOTH:
+                logger.info(f"Detected base model from adapter: {detected_base}")
+                return BASE_TO_UNSLOTH[detected_base]
+
+        logger.warning(f"No Unsloth mapping found for {base_model_id}, will use transformers backend")
+        return None
+
+    def _load_base_model_and_tokenizer_unsloth(
+        self,
+        unsloth_model_id: str,
+        broadcaster: Any = None,
+        alias: str = "default",
+        max_seq_length: int = 2048,
+    ) -> tuple[Any, Any]:
+        """
+        Load base model using Unsloth's FastModel for optimized inference.
+
+        Uses 70% less VRAM compared to standard transformers loading.
+        """
+        import threading
+        import time
+
+        # Set environment variables for Unsloth compatibility (using centralized constant)
+        os.environ[ENV_TORCHDYNAMO_DISABLE] = "1"
+
+        from unsloth import FastModel
+
+        if broadcaster:
+            broadcaster.publish(
+                "model_progress",
+                {"alias": alias, "step": "tokenizer", "message": "Loading tokenizer (Unsloth)..."},
+            )
+
+        # Start a background thread for progress monitoring
+        stop_monitor = threading.Event()
+        start_time = time.time()
+
+        def progress_monitor() -> None:
+            while not stop_monitor.is_set():
+                time.sleep(2)
+                if not stop_monitor.is_set() and broadcaster:
+                    elapsed = int(time.time() - start_time)
+                    broadcaster.publish(
+                        "model_progress",
+                        {
+                            "alias": alias,
+                            "step": "loading",
+                            "message": f"Loading with Unsloth... ({elapsed}s elapsed)",
+                        },
+                    )
+
+        monitor_thread = threading.Thread(target=progress_monitor, daemon=True)
+        monitor_thread.start()
+
+        try:
+            # Load model with Unsloth's optimizations
+            model, tokenizer = FastModel.from_pretrained(
+                model_name=unsloth_model_id,
+                max_seq_length=max_seq_length,
+                load_in_4bit=True,
+                load_in_8bit=False,
+                full_finetuning=False,
+            )
+
+            # Configure tokenizer
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            tokenizer.padding_side = "right"
+
+            logger.info(f"Loaded model with Unsloth: {unsloth_model_id}")
+
+            return model, tokenizer
+
+        except Exception as e:
+            # FM-06 mitigation: Clean up GPU memory on failure
+            logger.error(f"Unsloth model loading failed: {e}")
+            torch.cuda.empty_cache()
+
+            # Notify via broadcaster if available
+            if broadcaster:
+                broadcaster.publish(
+                    "model_progress",
+                    {
+                        "alias": alias,
+                        "step": "error",
+                        "message": f"Unsloth loading failed: {e}. Try standard backend.",
+                    },
+                )
+
+            # Re-raise with additional context
+            raise RuntimeError(
+                f"Failed to load model with Unsloth ({unsloth_model_id}). "
+                f"Original error: {e}. "
+                f"Consider using standard transformers backend."
+            ) from e
+
+        finally:
+            stop_monitor.set()
+            monitor_thread.join(timeout=1.0)
 
     async def _run_with_heartbeat(
         self,
@@ -354,6 +603,11 @@ class ModelManager:
         top_p: float = 1.0,
         stop_tokens: list[str] | None = None,
     ) -> str:
+        # FM-2 mitigation: Update activity BEFORE acquiring lock
+        # This prevents race condition where idle check happens between
+        # activity update and generation start
+        self._update_activity()
+
         model = self.models.get(alias)
         tokenizer = self.tokenizers.get(alias)
 
@@ -372,10 +626,28 @@ class ModelManager:
                 else:
                     raise RuntimeError(f"Model alias '{alias}' not available. Loaded: {list(self.models.keys())}")
 
-        # Run generation in thread to avoid blocking event loop
-        return await asyncio.to_thread(
-            self._generate_sync, model, tokenizer, prompt, max_new_tokens, temperature, top_p, stop_tokens
-        )  # type: ignore[no-any-return]
+        # FM-17: Get generation timeout from settings
+        timeout_seconds = self.settings.generation_timeout_seconds
+
+        # Run generation in thread with timeout to prevent infinite hangs
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self._generate_sync, model, tokenizer, prompt, max_new_tokens, temperature, top_p, stop_tokens
+                ),
+                timeout=timeout_seconds,
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Generation timed out after {timeout_seconds} seconds")
+            raise TimeoutError(
+                f"Model generation timed out after {timeout_seconds} seconds. "
+                "This may indicate the model is stuck. Try reducing max_tokens or simplifying the prompt."
+            ) from None
+
+        # Update activity after successful generation
+        self._update_activity()
+
+        return result  # type: ignore[no-any-return]
 
     # Default stop sequences for IRCA agent format
     DEFAULT_STOP_SEQUENCES = [

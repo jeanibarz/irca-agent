@@ -1,5 +1,7 @@
+import ast
 import json
 import logging
+import operator
 import random
 import re
 import string
@@ -23,6 +25,66 @@ def generate_output_id() -> str:
     return "".join(random.choices(chars, k=12))
 
 
+# FM-01: Safe math expression evaluator (replaces dangerous eval())
+# Only supports basic arithmetic: +, -, *, /, parentheses, and numbers
+_SAFE_OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+
+def _safe_eval_node(node: ast.AST) -> float:
+    """Recursively evaluate an AST node for safe math expressions."""
+    if isinstance(node, ast.Constant):  # Python 3.8+
+        if isinstance(node.value, (int, float)):
+            return float(node.value)
+        raise ValueError(f"Unsupported constant type: {type(node.value)}")
+    elif isinstance(node, ast.Num):  # Python 3.7 compatibility
+        return float(node.n)
+    elif isinstance(node, ast.BinOp):
+        if type(node.op) not in _SAFE_OPERATORS:
+            raise ValueError(f"Unsupported operator: {type(node.op).__name__}")
+        left = _safe_eval_node(node.left)
+        right = _safe_eval_node(node.right)
+        return _SAFE_OPERATORS[type(node.op)](left, right)
+    elif isinstance(node, ast.UnaryOp):
+        if type(node.op) not in _SAFE_OPERATORS:
+            raise ValueError(f"Unsupported unary operator: {type(node.op).__name__}")
+        operand = _safe_eval_node(node.operand)
+        return _SAFE_OPERATORS[type(node.op)](operand)
+    elif isinstance(node, ast.Expression):
+        return _safe_eval_node(node.body)
+    else:
+        raise ValueError(f"Unsupported expression type: {type(node).__name__}")
+
+
+def safe_math_eval(expression: str) -> float:
+    """
+    Safely evaluate a math expression string.
+
+    Only supports: numbers, +, -, *, /, parentheses.
+    Raises ValueError for invalid or unsafe expressions.
+
+    Examples:
+        safe_math_eval("2 + 3") -> 5.0
+        safe_math_eval("10 / 2 * 3") -> 15.0
+        safe_math_eval("(1 + 2) * 3") -> 9.0
+    """
+    if not expression or not expression.strip():
+        return 0.0
+
+    try:
+        tree = ast.parse(expression, mode="eval")
+        return _safe_eval_node(tree)
+    except (SyntaxError, ValueError) as e:
+        logger.warning(f"Invalid math expression '{expression}': {e}")
+        raise ValueError(f"Invalid math expression: {expression}") from e
+
+
 def generate_mock_output(function_name: str, parameters: dict) -> str:
     """Generate a plausible mock output for a function call."""
     mock_outputs = {
@@ -36,17 +98,10 @@ def generate_mock_output(function_name: str, parameters: dict) -> str:
             "price": round(random.uniform(100, 500), 2),
             "currency": "USD",
         },
+        # FM-01: Use safe_math_eval instead of eval() to prevent RCE
         "calculator": lambda p: {
-            "result": eval(p.get("expression", "0"))
-            if p.get("expression", "")
-            .replace(" ", "")
-            .replace("+", "")
-            .replace("-", "")
-            .replace("*", "")
-            .replace("/", "")
-            .replace(".", "")
-            .isdigit()
-            or True
+            "result": safe_math_eval(p.get("expression", "0"))
+            if p.get("expression")
             else 0
         },
         "get_user_location": lambda p: {
@@ -58,8 +113,10 @@ def generate_mock_output(function_name: str, parameters: dict) -> str:
     generator = mock_outputs.get(function_name, lambda p: {"status": "success", "data": "Mock response"})
     try:
         return str(generator(parameters))
-    except Exception:
-        return str({"status": "success", "result": "Mock data"})
+    except Exception as e:
+        # FM-40: Log error instead of silently swallowing, return error indicator
+        logger.warning(f"Mock output generation failed for {function_name}: {e}")
+        return str({"status": "error", "error": f"Mock generation failed: {type(e).__name__}"})
 
 
 def extract_function_call(text: str) -> tuple[str, dict] | None:

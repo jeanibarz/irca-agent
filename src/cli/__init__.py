@@ -7,11 +7,13 @@ Usage:
     irca generate --help
     irca finetune --help
     irca dataset --help
+    irca server --help
+    irca playground --help
 """
 
 import click
 
-from .commands import dataset, experiment, finetune, generate
+from .commands import dataset, experiment, finetune, generate, playground, server
 
 
 @click.group()
@@ -34,6 +36,8 @@ cli.add_command(generate.generate)
 cli.add_command(finetune.finetune)
 cli.add_command(dataset.dataset)
 cli.add_command(experiment.experiment)
+cli.add_command(server.server)
+cli.add_command(playground.playground)
 
 
 def main() -> None:
