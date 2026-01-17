@@ -123,6 +123,11 @@ def apply_chat_template(
     This ensures the output includes proper special tokens (EOS, etc.)
     that the model was pre-trained with.
 
+    IMPORTANT: Some models (e.g., Mistral) drop the system message when the
+    last message is from the assistant (training scenario). This function
+    detects and fixes this by prepending the system content to the first
+    user message when necessary.
+
     Args:
         tokenizer: The model's tokenizer (has apply_chat_template method).
         messages: List of message dictionaries with 'role' and 'content'.
@@ -148,14 +153,108 @@ def apply_chat_template(
         return _fallback_format(messages, add_generation_prompt)
 
     try:
+        # Check if there's a system message that might get dropped
+        fixed_messages = _fix_system_message_for_training(tokenizer, messages)
+
         return tokenizer.apply_chat_template(
-            messages,
+            fixed_messages,
             tokenize=tokenize,
             add_generation_prompt=add_generation_prompt,
         )
     except Exception as e:
         logger.warning(f"apply_chat_template failed: {e}. Using fallback.")
         return _fallback_format(messages, add_generation_prompt)
+
+
+def _fix_system_message_for_training(
+    tokenizer: PreTrainedTokenizer,
+    messages: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    """
+    Fix system message handling for models that drop it during training.
+
+    Some models (Mistral family) only include the system message when the last
+    message is from the user (inference). For training (where assistant is last),
+    the system message is silently dropped.
+
+    This function detects this issue and prepends the system content to the
+    first user message to ensure it's included in training.
+
+    Args:
+        tokenizer: The model's tokenizer.
+        messages: Original list of messages.
+
+    Returns:
+        Fixed messages with system content preserved.
+    """
+    # Quick checks - no fix needed if:
+    # 1. No messages
+    # 2. No system message
+    # 3. Last message is from user (system will be included)
+    if not messages:
+        return messages
+
+    has_system = messages[0]["role"] == "system"
+    if not has_system:
+        return messages
+
+    # Last message is user - system should be included (inference case)
+    if messages[-1]["role"] == "user":
+        return messages
+
+    # Training case: last message is assistant
+    # Test if system message gets dropped by the template
+    system_content = messages[0]["content"]
+
+    # Use a unique marker to detect if system is included
+    test_marker = "<<SYSTEM_TEST_MARKER_12345>>"
+    test_messages = [
+        {"role": "system", "content": test_marker},
+        {"role": "user", "content": "test"},
+        {"role": "assistant", "content": "test"},
+    ]
+
+    try:
+        test_output = tokenizer.apply_chat_template(
+            test_messages,
+            tokenize=False,
+            add_generation_prompt=False,
+        )
+        system_included = test_marker in test_output
+    except Exception:
+        # If test fails, assume system is included
+        return messages
+
+    if system_included:
+        # Template handles system correctly
+        return messages
+
+    # System message is dropped - fix by prepending to first user message
+    logger.debug(
+        "Detected chat template that drops system message for training. "
+        "Prepending system content to first user message."
+    )
+
+    fixed_messages = []
+    system_prepended = False
+
+    for msg in messages:
+        if msg["role"] == "system":
+            # Skip system message, we'll prepend it to user message
+            continue
+        elif msg["role"] == "user" and not system_prepended:
+            # Prepend system content to first user message
+            fixed_messages.append(
+                {
+                    "role": "user",
+                    "content": f"{system_content}\n\n{msg['content']}",
+                }
+            )
+            system_prepended = True
+        else:
+            fixed_messages.append(msg)
+
+    return fixed_messages
 
 
 def _fallback_format(messages: list[dict[str, str]], add_generation_prompt: bool) -> str:

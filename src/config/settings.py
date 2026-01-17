@@ -257,6 +257,10 @@ class Settings(BaseSettings):
                 "base_model": "Qwen/Qwen3-4B",
                 "model_name": f"Qwen3-4B_irca_agent_{self.version}",
             },
+            "ministral-3b": {
+                "base_model": "mistralai/Ministral-3-3B-Instruct-2512",
+                "model_name": f"Ministral-3B_irca_agent_{self.version}",
+            },
         }
 
         if model_type not in presets:

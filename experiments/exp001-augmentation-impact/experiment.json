@@ -29,13 +29,13 @@
   "models_to_train": {
     "baseline": {
       "train_data": "train_baseline",
-      "base_model": "Qwen/Qwen2.5-3B-Instruct",
+      "base_model": "mistralai/Ministral-3-3B-Instruct-2512",
       "output_dir": "experiments/exp001-augmentation-impact/models/baseline",
       "description": "Model trained on non-augmented data"
     },
     "augmented": {
       "train_data": "train_augmented",
-      "base_model": "Qwen/Qwen2.5-3B-Instruct",
+      "base_model": "mistralai/Ministral-3-3B-Instruct-2512",
       "output_dir": "experiments/exp001-augmentation-impact/models/augmented",
       "description": "Model trained on augmented data"
     }

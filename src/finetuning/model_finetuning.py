@@ -271,7 +271,17 @@ def parse_arguments() -> argparse.Namespace:
         "--model_type",
         type=str,
         default="mistral",
-        choices=["mistral", "mistral-v3", "tinyllama", "qwen-7b", "qwen-4b", "qwen-14b", "qwen3-8b", "qwen3-4b"],
+        choices=[
+            "mistral",
+            "mistral-v3",
+            "tinyllama",
+            "qwen-7b",
+            "qwen-4b",
+            "qwen-14b",
+            "qwen3-8b",
+            "qwen3-4b",
+            "ministral-3b",
+        ],
         help="Type of model to train",
     )
     parser.add_argument(

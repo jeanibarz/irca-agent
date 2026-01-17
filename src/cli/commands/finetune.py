@@ -25,7 +25,9 @@ def finetune() -> None:
 @click.option(
     "--model-type",
     "-m",
-    type=click.Choice(["mistral", "mistral-v3", "tinyllama", "qwen-7b", "qwen-4b", "qwen-14b", "qwen3-8b", "qwen3-4b"]),
+    type=click.Choice(
+        ["mistral", "mistral-v3", "tinyllama", "qwen-7b", "qwen-4b", "qwen-14b", "qwen3-8b", "qwen3-4b", "ministral-3b"]
+    ),
     default="mistral",
     help="Type of model to finetune",
 )

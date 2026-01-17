@@ -1301,7 +1301,7 @@ poetry run irca finetune run \
   --epochs 1
 ```
 
-**Available models**: `mistral`, `mistral-v3`, `tinyllama`, `qwen-7b`, `qwen-4b`, `qwen-14b`, `qwen3-8b`, `qwen3-4b`
+**Available models**: `mistral`, `mistral-v3`, `tinyllama`, `qwen-7b`, `qwen-4b`, `qwen-14b`, `qwen3-8b`, `qwen3-4b`, `ministral-3b`
 
 **Output**:
 - Model saved to: `/home/jean/git/irca-agent/models/finetuned_models/Qwen3-4B_irca_agent_v5-6/`
