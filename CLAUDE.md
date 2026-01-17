@@ -1293,19 +1293,52 @@ poetry run irca dataset diversity \
 
 **Purpose**: Train model using Q-LoRA on formatted dataset.
 
-**Command**:
+**Command** (default: Unsloth backend, 70% less VRAM):
 ```bash
 poetry run irca finetune run \
   -m qwen3-4b \
   -d datasets/irca_agent_dataset_v5-5acc-formatted-augmented \
-  --epochs 1
+  --epochs 3
 ```
 
-**Available models**: `mistral`, `mistral-v3`, `tinyllama`, `qwen-7b`, `qwen-4b`, `qwen-14b`, `qwen3-8b`, `qwen3-4b`, `ministral-3b`
+**Command** (TRL backend, for environments without Unsloth):
+```bash
+poetry run irca finetune run \
+  -m qwen3-4b \
+  -d datasets/irca_agent_dataset_v5-5acc-formatted-augmented \
+  --epochs 3 \
+  --backend trl
+```
+
+**Default parameters** (optimized for Unsloth on 24GB GPU):
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--lora-r` | 16 | LoRA rank. Use 16 for memory efficiency, up to 64 if VRAM allows |
+| `--max-seq-length` | 1024 | Max sequence length. Use 2048 only if needed |
+| `--batch-size` | 4 | Effective batch size (via gradient accumulation) |
+| `--learning-rate` | 2e-4 | Learning rate |
+| `--seed` | 42 | Random seed for reproducibility |
+
+**Memory considerations**:
+- `lora_r=16, max_seq=1024`: ~6GB VRAM (recommended for Unsloth)
+- `lora_r=64, max_seq=2048`: May cause OOM on 24GB GPUs
+- If you get CUDA OOM errors, reduce `--lora-r` and/or `--max-seq-length`
+
+**Available backends**:
+- `unsloth` (default): Uses Unsloth's optimized kernels. ~6GB VRAM for 4B models.
+- `trl`: Standard TRL/BitsAndBytes. ~24GB VRAM for 4B models.
+
+**Available models**: `mistral`, `mistral-v3`, `tinyllama`, `qwen-7b`, `qwen-4b`, `qwen-14b`, `qwen3-8b`, `qwen3-4b`
+
+**W&B integration**:
+- Metrics are automatically streamed to W&B during training
+- Run name format: `{model}-{dataset}-{timestamp}`
+- Dashboard: https://wandb.ai/ibarz-jean-home/irca-agent
+- Use `--no-wandb` to disable tracking
 
 **Output**:
 - Model saved to: `/home/jean/git/irca-agent/models/finetuned_models/Qwen3-4B_irca_agent_v5-6/`
-- W&B tracking: https://wandb.ai/ibarz-jean-home/irca-agent
 
 **Epoch guidance**:
 - 1 epoch for 3x multiplied dataset (~550 samples)
@@ -1349,11 +1382,11 @@ print(f'French: {fr} ({100*fr/len(ds):.1f}%)')
 print(f'Spanish: {es} ({100*es/len(ds):.1f}%)')
 "
 
-# Step 3: Finetune
+# Step 3: Finetune (uses Unsloth by default)
 poetry run irca finetune run \
   -m qwen3-4b \
   -d datasets/irca_agent_dataset_v5-5acc-formatted-augmented \
-  --epochs 1
+  --epochs 3
 ```
 
 ---
@@ -1366,7 +1399,11 @@ poetry run irca finetune run \
 | Format dataset (baseline) | `irca dataset format -i INPUT -o OUTPUT --no-augment` |
 | Diversity (single) | `irca dataset diversity -d DATASET --quick` |
 | Diversity (compare) | `irca dataset diversity -o ORIGINAL -a AUGMENTED --quick` |
-| Finetune | `irca finetune run -m qwen3-4b -d DATASET --epochs 1` |
+| Finetune (Unsloth, default) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3` |
+| Finetune (memory-efficient) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3 --lora-r 16 --max-seq-length 1024` |
+| Finetune (TRL backend) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3 --backend trl` |
+| Finetune (no W&B) | `irca finetune run -m qwen3-4b -d DATASET --epochs 3 --no-wandb` |
+| Eval checkpoints (Unsloth) | `irca experiment eval-checkpoints -c CHECKPOINT_DIR --train-set TRAIN --test-set TEST` |
 | Inspect dataset | `irca dataset inspect DATASET` |
 
 ---
@@ -1391,6 +1428,10 @@ poetry run irca finetune run \
 3. **Finetuning requires GPU** - uses Q-LoRA with 4-bit quantization
 4. **W&B tracking is automatic** - logs to https://wandb.ai/ibarz-jean-home/irca-agent
 5. **Seed 42 is default** for reproducibility
+6. **Unsloth is the default backend** - uses 70% less VRAM (~6GB for 4B models)
+7. **Unsloth environment variables are set automatically**:
+   - `TORCHDYNAMO_DISABLE=1` - avoids nvcc permission errors
+   - `UNSLOTH_RETURN_LOGITS=1` - required for perplexity evaluation
 
 ---
 
