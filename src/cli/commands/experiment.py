@@ -2,6 +2,9 @@
 Experiment Command
 
 Commands for running and evaluating experiments per ADR-008 methodology.
+
+Implements:
+- FR-EXP-001: Experiment pre-flight command (validate)
 """
 
 import json
@@ -65,6 +68,12 @@ def experiment() -> None:
     is_flag=True,
     help="Skip chat template conversion (use raw IRCA format)",
 )
+@click.option(
+    "--backend",
+    type=click.Choice(["unsloth", "standard"]),
+    default="unsloth",
+    help="Model loading backend: unsloth (70%% less VRAM) or standard",
+)
 @click.pass_context
 def eval_checkpoints(
     ctx: click.Context,
@@ -75,6 +84,7 @@ def eval_checkpoints(
     output: str | None,
     eval_mode: str,
     no_chat_template: bool,
+    backend: str,
 ) -> None:
     """
     Evaluate all checkpoints in a directory on train and test sets.
@@ -113,11 +123,14 @@ def eval_checkpoints(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     )
 
-    click.echo("🔬 Checkpoint Evaluation (ADR-008 Methodology)")
+    use_unsloth = backend == "unsloth"
+    backend_emoji = "🦥" if use_unsloth else "🔬"
+    click.echo(f"{backend_emoji} Checkpoint Evaluation (ADR-008 Methodology)")
     click.echo(f"   Checkpoints: {checkpoints_dir}")
     click.echo(f"   Train set: {train_set}")
     click.echo(f"   Test set: {test_set}")
     click.echo(f"   Eval mode: {eval_mode}")
+    click.echo(f"   Backend: {backend}")
     if baseline_model:
         click.echo(f"   Baseline: {baseline_model}")
 
@@ -188,6 +201,7 @@ def eval_checkpoints(
                 use_cache=False,
                 apply_chat_template=apply_chat_template,
                 return_perplexities=True,
+                use_unsloth=use_unsloth,
             )
 
             # Compute bootstrap CI for train
@@ -203,6 +217,7 @@ def eval_checkpoints(
                 use_cache=False,
                 apply_chat_template=apply_chat_template,
                 return_perplexities=True,
+                use_unsloth=use_unsloth,
             )
 
             # Compute bootstrap CI for test
@@ -264,6 +279,7 @@ def eval_checkpoints(
                 use_cache=False,
                 apply_chat_template=apply_chat_template,
                 return_perplexities=True,
+                use_unsloth=use_unsloth,
             )
 
             baseline_mean, baseline_ci_lower, baseline_ci_upper = bootstrap_confidence_interval(
@@ -460,6 +476,151 @@ def compare(
         click.echo(f"\n💾 Report saved to: {output}")
 
     click.secho("\n✅ Comparison complete!", fg="green")
+
+
+@experiment.command("validate")
+@click.option(
+    "--experiment-dir",
+    "-e",
+    type=click.Path(exists=True),
+    required=True,
+    help="Directory containing experiment configuration and datasets",
+)
+@click.option(
+    "--sample-size",
+    "-n",
+    type=int,
+    default=10,
+    help="Number of samples to check for marker integrity (default: 10)",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default=None,
+    help="Output JSON file for validation report",
+)
+@click.option(
+    "--strict",
+    is_flag=True,
+    help="Fail on warnings in addition to errors",
+)
+@click.pass_context
+def validate(
+    ctx: click.Context,
+    experiment_dir: str,
+    sample_size: int,
+    output: str | None,
+    strict: bool,
+) -> None:
+    """
+    Run pre-flight validation checks before experiment execution.
+
+    This command validates:
+    - Experiment configuration (experiment.json)
+    - Dataset structure and 'text' column
+    - IRCA marker integrity (to catch augmentation corruption)
+    - Augmentation distribution (for augmented datasets)
+    - Statistics API availability
+
+    Use this before running expensive GPU operations to catch issues early.
+
+    Examples:
+
+        # Basic validation
+        irca experiment validate -e experiments/exp001-augmentation-impact
+
+        # Validate with more samples and strict mode
+        irca experiment validate -e experiments/exp001 -n 50 --strict
+
+        # Save report to file
+        irca experiment validate -e experiments/exp001 -o validation.json
+    """
+    from src.validation.experiment import run_preflight_checks, validate_statistics_api
+
+    verbose = ctx.obj.get("verbose", False)
+    log_level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    )
+
+    click.echo("🔍 Experiment Pre-flight Validation")
+    click.echo(f"   Directory: {experiment_dir}")
+    click.echo(f"   Sample size: {sample_size}")
+    click.echo(f"   Strict mode: {strict}")
+    click.echo()
+
+    # Run pre-flight checks
+    experiment_path = Path(experiment_dir)
+    report = run_preflight_checks(experiment_path, sample_size)
+
+    # Also validate statistics API
+    stats_result = validate_statistics_api()
+    if not stats_result.passed:
+        report.errors.append(stats_result)
+        report.passed = False
+    elif stats_result.severity == "warning":
+        report.warnings.append(stats_result)
+    else:
+        report.info.append(stats_result)
+
+    # Apply strict mode
+    if strict and report.warnings:
+        report.passed = False
+
+    # Print results
+    click.echo("=" * 70)
+    click.echo("VALIDATION RESULTS")
+    click.echo("=" * 70)
+
+    # Errors
+    if report.errors:
+        click.secho(f"\n❌ ERRORS ({len(report.errors)}):", fg="red", bold=True)
+        for error in report.errors:
+            click.secho(f"   • [{error.check_name}] {error.message}", fg="red")
+            if error.details and verbose:
+                for key, value in error.details.items():
+                    click.echo(f"      - {key}: {value}")
+
+    # Warnings
+    if report.warnings:
+        click.secho(f"\n⚠️  WARNINGS ({len(report.warnings)}):", fg="yellow", bold=True)
+        for warning in report.warnings:
+            click.secho(f"   • [{warning.check_name}] {warning.message}", fg="yellow")
+            if warning.details and verbose:
+                for key, value in warning.details.items():
+                    click.echo(f"      - {key}: {value}")
+
+    # Info (only in verbose mode)
+    if verbose and report.info:
+        click.secho(f"\nℹ️  INFO ({len(report.info)}):", fg="blue")
+        for info in report.info:
+            click.echo(f"   • [{info.check_name}] {info.message}")
+
+    # Summary
+    click.echo()
+    click.echo("-" * 70)
+    if report.passed:
+        click.secho("✅ VALIDATION PASSED", fg="green", bold=True)
+        click.echo(f"   Datasets validated: {', '.join(report.datasets_validated) or 'none'}")
+    else:
+        click.secho("❌ VALIDATION FAILED", fg="red", bold=True)
+        click.echo(f"   {len(report.errors)} error(s), {len(report.warnings)} warning(s)")
+        if strict and report.warnings and not report.errors:
+            click.echo("   (Failed due to --strict mode)")
+
+    # Save report if output specified
+    if output:
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(report.to_dict(), f, indent=2)
+        click.echo(f"\n💾 Report saved to: {output}")
+
+    # Exit with appropriate code
+    if not report.passed:
+        sys.exit(1)
 
 
 def _generate_html_report(report: dict, baseline: dict, augmented: dict) -> str:
