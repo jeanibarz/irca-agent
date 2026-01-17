@@ -42,13 +42,11 @@ class TestFunctionAugmentation(unittest.TestCase):
         # Steps: PROMPT -> THOUGHT -> ACTION -> CALL(func_b)
         main_trace = Trace()
         main_trace.steps = [
-            create_step(StepType.INITIAL_PROMPT, "prompt"),  # 0
-            create_step(StepType.THOUGHT, "thought 1"),  # 1
-            create_step(StepType.ACTION_CHOICE, "action 1"),  # 2
-            create_step(StepType.FUNCTION_CALL, "func_b"),  # 3 (<-- target)
+            create_step(StepType.INITIAL_PROMPT, diff="prompt"),  # 0
+            create_step(StepType.THOUGHT, diff="thought 1", thought="thought 1"),  # 1
+            create_step(StepType.ACTION_CHOICE, diff="action 1", action_choice="call function"),  # 2
+            create_step(StepType.FUNCTION_CALL, diff="func_b", fct_name="func_b", fct_parameters="{}"),  # 3
         ]
-        # Set fct_name specifically for the CALL step as the logic logic relies on it
-        main_trace.steps[3].fct_name = "func_b"
 
         available_functions = json.dumps([{"name": "func_a"}, {"name": "func_b"}, {"name": "func_c"}])
         user_query = "help me"
@@ -84,17 +82,15 @@ class TestFunctionAugmentation(unittest.TestCase):
         # Steps: PROMPT(0) -> THOUGHT(1) -> ACTION(2) -> CALL(3) -> OUTPUT(4) -> THOUGHT(5) -> ACTION(6) -> CALL(7)
         main_trace = Trace()
         steps = [
-            create_step(StepType.INITIAL_PROMPT, "prompt"),
-            create_step(StepType.THOUGHT, "thought 1"),
-            create_step(StepType.ACTION_CHOICE, "action 1"),
-            create_step(StepType.FUNCTION_CALL, "call 1"),  # index 3
-            create_step(StepType.FUNCTION_OUTPUT, "out 1"),
-            create_step(StepType.THOUGHT, "thought 2"),
-            create_step(StepType.ACTION_CHOICE, "action 2"),
-            create_step(StepType.FUNCTION_CALL, "call 2"),  # index 7
+            create_step(StepType.INITIAL_PROMPT, diff="prompt"),
+            create_step(StepType.THOUGHT, diff="thought 1", thought="thought 1"),
+            create_step(StepType.ACTION_CHOICE, diff="action 1", action_choice="call function"),
+            create_step(StepType.FUNCTION_CALL, diff="call 1", fct_name="func_1", fct_parameters="{}"),  # index 3
+            create_step(StepType.FUNCTION_OUTPUT, diff="out 1", shortuuid="abc123", function_output="out 1"),
+            create_step(StepType.THOUGHT, diff="thought 2", thought="thought 2"),
+            create_step(StepType.ACTION_CHOICE, diff="action 2", action_choice="call function"),
+            create_step(StepType.FUNCTION_CALL, diff="call 2", fct_name="func_2", fct_parameters="{}"),  # index 7
         ]
-        steps[3].fct_name = "func_1"
-        steps[7].fct_name = "func_2"
         main_trace.steps = steps
 
         available_functions = json.dumps([{"name": "func_1"}, {"name": "func_2"}])
@@ -113,4 +109,4 @@ class TestFunctionAugmentation(unittest.TestCase):
 
         self.assertEqual(len(base_trace.steps), 5)
         self.assertEqual(base_trace.steps[-1].type, StepType.FUNCTION_OUTPUT)
-        self.assertEqual(base_trace.steps[-1].content, "out 1")
+        self.assertEqual(base_trace.steps[-1].function_output, "out 1")

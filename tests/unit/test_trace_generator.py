@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from core.domain import (
+from src.core.domain import (
     ActionChoiceStep,
     FinalAnswerStep,
     FunctionCallStep,
@@ -22,7 +22,7 @@ from core.domain import (
     ThoughtStep,
     Trace,
 )
-from core.generation.trace_generator import TraceGenerator
+from src.core.generation.trace_generator import TraceGenerator
 from tests.mocks import MockGuidanceModel
 
 
@@ -44,11 +44,11 @@ class TestTraceGeneratorOrchestration:
     Req: FR-GEN-01
     """
 
-    @patch("core.generation.trace_generator.generate_thought")
-    @patch("core.generation.trace_generator.generate_action_choice")
-    @patch("core.generation.trace_generator.generate_function_call")
-    @patch("core.generation.trace_generator.generate_function_output")
-    @patch("core.generation.trace_generator.generate_final_answer")
+    @patch("src.core.generation.trace_generator.generate_thought")
+    @patch("src.core.generation.trace_generator.generate_action_choice")
+    @patch("src.core.generation.trace_generator.generate_function_call")
+    @patch("src.core.generation.trace_generator.generate_function_output")
+    @patch("src.core.generation.trace_generator.generate_final_answer")
     def test_generate_single_trace_success(
         self, mock_final_answer, mock_fct_output, mock_fct_call, mock_action, mock_thought, trace_generator
     ):
@@ -118,10 +118,10 @@ class TestTraceGeneratorOrchestration:
         assert trace.steps[6].action_choice == "final answer"
         assert trace.steps[7].type == StepType.FINAL_ANSWER
 
-    @patch("core.generation.trace_generator.generate_thought")
-    @patch("core.generation.trace_generator.generate_action_choice")
-    @patch("core.generation.trace_generator.generate_function_call")
-    @patch("core.generation.trace_generator.generate_function_output")
+    @patch("src.core.generation.trace_generator.generate_thought")
+    @patch("src.core.generation.trace_generator.generate_action_choice")
+    @patch("src.core.generation.trace_generator.generate_function_call")
+    @patch("src.core.generation.trace_generator.generate_function_output")
     def test_max_steps_reached(self, mock_out, mock_call, mock_action, mock_thought, trace_generator):
         """Test that generation stops if max_steps is reached."""
 
@@ -143,7 +143,7 @@ class TestTraceGeneratorOrchestration:
             lm,
         )[1]
 
-        with patch("core.generation.trace_generator.generate_final_answer") as mock_final:
+        with patch("src.core.generation.trace_generator.generate_final_answer") as mock_final:
             mock_final.side_effect = lambda lm, trace, **kwargs: (
                 trace.append(FinalAnswerStep(final_answer="Done", diff="...")),
                 lm,
@@ -187,7 +187,7 @@ class TestFunctionRemovalAugmentation:
             mock_gen_single.return_value = canned_trace
 
             # Use logger patch just to be safe if debugging needs (optional)
-            with patch("core.generation.trace_generator.logger"):
+            with patch("src.core.generation.trace_generator.logger"):
                 # Mock generate_trace_missing_function to verify it's called
                 with patch.object(trace_generator, "generate_trace_missing_function") as mock_gen_missing:
                     # Return a trace with steps so it evaluates to True (len > 0)

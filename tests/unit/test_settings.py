@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from config import Settings, get_settings
+from config import Settings, get_settings, clear_settings_cache
 
 
 class TestSettings:
@@ -21,12 +21,14 @@ class TestSettings:
         with patch.dict(os.environ, {}, clear=True):
             settings = Settings()
 
-            assert settings.workspace_dir == Path("/workspace")
+            # workspace_dir defaults to cwd() via default_factory
+            assert settings.workspace_dir == Path.cwd()
             assert settings.models_dir == Path("models")
             assert settings.datasets_dir == Path("datasets")
-            assert settings.lora_r == 128
-            assert settings.lora_alpha == 64
-            assert settings.num_train_epochs == 5
+            # Current defaults optimized for Unsloth on 24GB GPU
+            assert settings.lora_r == 16
+            assert settings.lora_alpha == 16
+            assert settings.num_train_epochs == 3
 
     def test_settings_from_environment(self):
         """Settings can be loaded from environment variables."""
@@ -146,14 +148,14 @@ class TestGetSettings:
     def test_get_settings_returns_settings(self):
         """get_settings returns a Settings instance."""
         # Clear cache first
-        get_settings.cache_clear()
+        clear_settings_cache()
 
         settings = get_settings()
         assert isinstance(settings, Settings)
 
     def test_get_settings_is_cached(self):
         """get_settings returns the same instance."""
-        get_settings.cache_clear()
+        clear_settings_cache()
 
         settings1 = get_settings()
         settings2 = get_settings()
@@ -162,10 +164,10 @@ class TestGetSettings:
 
     def test_get_settings_cache_can_be_cleared(self):
         """Cache can be cleared to reload settings."""
-        get_settings.cache_clear()
+        clear_settings_cache()
         settings1 = get_settings()
 
-        get_settings.cache_clear()
+        clear_settings_cache()
         settings2 = get_settings()
 
         # Different instances after cache clear

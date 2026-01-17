@@ -102,8 +102,6 @@ The functions available to you are described below.
 ### FUNCTIONS AVAILABLE
 [{"name": "get_weather", "description": "Get weather"}]
 
-Note: ensure you only use information provided in the context.
-
 ### USER QUERY
 What is the weather?
 

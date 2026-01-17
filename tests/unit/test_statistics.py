@@ -1,4 +1,9 @@
-"""Unit tests for statistical utilities."""
+"""Unit tests for statistical utilities.
+
+Tests:
+- FR-VAL-006: Statistics API validation
+- FM-1: bootstrap_paired doesn't exist (doc bug)
+"""
 
 import numpy as np
 import pytest
@@ -9,6 +14,7 @@ from src.diversity.statistics import (
     effect_size_cohens_d,
     interpret_effect_size,
 )
+from src.diversity import statistics as stats_module
 
 
 class TestBootstrapConfidenceInterval:
@@ -188,3 +194,83 @@ class TestInterpretEffectSize:
         """Test that positive values indicate B is higher."""
         result = interpret_effect_size(0.5)
         assert "higher" in result
+
+
+# ============================================
+# Statistics API Validation (FR-VAL-006, FM-1)
+# ============================================
+
+
+class TestStatisticsAPIValidation:
+    """
+    Tests for statistics API validation.
+
+    Addresses FM-1: bootstrap_paired doesn't exist (documentation bug).
+    """
+
+    def test_ut_val_030_bootstrap_confidence_interval_exists(self):
+        """UT-VAL-030: bootstrap_confidence_interval exists."""
+        assert hasattr(stats_module, "bootstrap_confidence_interval")
+        assert callable(getattr(stats_module, "bootstrap_confidence_interval"))
+
+    def test_ut_val_031_bootstrap_difference_test_exists(self):
+        """UT-VAL-031: bootstrap_difference_test exists."""
+        assert hasattr(stats_module, "bootstrap_difference_test")
+        assert callable(getattr(stats_module, "bootstrap_difference_test"))
+
+    def test_ut_val_032_bootstrap_paired_does_not_exist(self):
+        """
+        UT-VAL-032: Document that bootstrap_paired does NOT exist.
+
+        This test ensures we don't accidentally add a bootstrap_paired function
+        without updating the documentation. The experiment.json file incorrectly
+        references "bootstrap_paired" but it should use "bootstrap_confidence_interval"
+        or "bootstrap_difference_test".
+
+        If this test fails because bootstrap_paired was added, update:
+        - experiments/exp001-augmentation-impact/experiment.json
+        - Any documentation referencing bootstrap_paired
+        """
+        assert not hasattr(stats_module, "bootstrap_paired"), (
+            "bootstrap_paired was added but experiment.json and docs may still "
+            "reference invalid function names. Update them accordingly."
+        )
+
+    def test_expected_functions_exported(self):
+        """Test that all expected functions are exported from the module."""
+        expected_functions = [
+            "bootstrap_confidence_interval",
+            "bootstrap_difference_test",
+            "effect_size_cohens_d",
+            "interpret_effect_size",
+        ]
+
+        for func_name in expected_functions:
+            assert hasattr(stats_module, func_name), f"Missing function: {func_name}"
+            assert callable(getattr(stats_module, func_name)), f"Not callable: {func_name}"
+
+    def test_bootstrap_confidence_interval_signature(self):
+        """Test that bootstrap_confidence_interval has expected signature."""
+        import inspect
+
+        sig = inspect.signature(bootstrap_confidence_interval)
+        params = list(sig.parameters.keys())
+
+        # Must have these parameters
+        assert "values" in params
+        assert "n_bootstrap" in params
+        assert "confidence" in params
+        assert "seed" in params
+
+    def test_bootstrap_difference_test_signature(self):
+        """Test that bootstrap_difference_test has expected signature."""
+        import inspect
+
+        sig = inspect.signature(bootstrap_difference_test)
+        params = list(sig.parameters.keys())
+
+        # Must have these parameters
+        assert "values_a" in params
+        assert "values_b" in params
+        assert "n_bootstrap" in params
+        assert "seed" in params
