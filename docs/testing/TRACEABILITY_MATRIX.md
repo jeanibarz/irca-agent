@@ -70,7 +70,7 @@ This matrix maps Functional Requirements (FR) to their Implementation components
 | **FR-PLAY-04** | Robustness | `src/server/model_manager.py` (Async locks) | Manual Verification (Concurrent clicking) |
 | **FR-PLAY-05** | Conversation History | `src/server/routers/conversations.py`<br>`ui/src/App.tsx` | Manual Verification (Refresh page) |
 | **FR-PLAY-06** | Output Sanitization | `ui/src/App.tsx` (regex replace) | Manual Verification (Generate trace) |
-| **FR-PLAY-09** | Conversation Deletion | `src/server/routers/conversations.py`<br>`ui/src/components/Sidebar.tsx` | `tests/unit/test_conversations.py`* |
+| **FR-PLAY-09** | Conversation Deletion | `src/server/routers/conversations.py`<br>`ui/src/components/Sidebar.tsx` | `tests/unit/test_conversations.py` |
 | **FR-PLAY-08** | Reference Highlighting | `ui/src/components/TraceRenderers.tsx` | Manual Verification |
 | **NFR-USE-02** | Loading Feedback | `src/server/events.py`<br>`src/server/model_manager.py`<br>`ui/src/App.tsx` | Manual Verification (Logs/UI) |
 
@@ -78,26 +78,33 @@ This matrix maps Functional Requirements (FR) to their Implementation components
 
 ## Gap Analysis
 
-Based on the current analysis of `tests/`:
+Based on the current analysis of `tests/` (Updated 2025-01-17):
 
-1.  **Unit Tests**: There is good coverage for utilities (`test_utils.py`) and prompt building (`test_prompt_builder.py`).
-2.  **Missing coverage**:
-    *   Explicit tests for `trace_generator.py` core logic (mocking the LLM) are critical for **FR-GEN-01**.
-    *   Tests for `finetuning` logic are likely missing or only exist as manual scripts.
-    *   CLI command tests (using `click.testing.CliRunner`) would ensure **FR-CLI-01** reliability.
+1.  **Unit Tests**: Good coverage exists for:
+    *   Utilities (`test_utils.py`), prompt building (`test_prompt_builder.py`)
+    *   Trace generation logic (`test_trace_generator.py`) - covers **FR-GEN-01**
+    *   Function augmentation (`test_function_augmentation.py`) - covers **FR-GEN-03**
+    *   Settings and configuration (`test_settings.py`) - covers **FR-FT-02**, **FR-FT-03**
+    *   Security (safe math eval, input validation) - covers **FR-SEC-01**, **FR-SEC-02**
+    *   Server model manager (`test_idle_ejection.py`, `test_generation_utils.py`)
+    *   Conversations API (`test_conversations.py`) - covers **FR-PLAY-09**
+2.  **Remaining gaps** (lower priority):
+    *   Finetuning logic tests (currently manual scripts)
+    *   Full CLI command tests (using `click.testing.CliRunner`) for **FR-CLI-01**
+    *   Model loading/ejection integration tests
 
 ## Security Requirements (Added from FM Audit 2025-01-17)
 
 | Req ID | Requirement Description | Implementation Component(s) | Verifying Test(s) |
 |--------|--------------------------|----------------------------|-------------------|
-| **FR-SEC-01** | Safe Expression Evaluation | `src/server/routers/generation.py::safe_math_eval` | `tests/unit/test_security_fixes.py::TestSafeMathEvaluator` |
+| **FR-SEC-01** | Safe Expression Evaluation | `src/server/routers/generation.py::safe_math_eval` | `tests/unit/test_security_fixes.py::TestSafeMathEvaluator`<br>`tests/unit/test_generation_utils.py::TestSafeMathEval` |
 | **FR-SEC-02** | Input Validation | `src/server/schemas.py::GenerationRequest` | `tests/unit/test_security_fixes.py::TestInputValidation` |
 | **FR-SEC-03** | CORS Configuration | `src/server/main.py` (CORS middleware) | Manual Verification |
 | **FR-SEC-04** | Generation Timeout | `src/server/model_manager.py::generate`<br>`src/config/settings.py::generation_timeout_seconds` | `tests/unit/test_security_fixes.py::TestGenerationTimeout` |
 | **FR-SEC-05** | Conversation ID Validation | `src/server/routers/conversations.py::_validate_conv_id` | Manual Verification |
 | **FR-SEC-06** | Adapter ID Validation | `src/server/routers/models.py::_validate_adapter_id` | Manual Verification |
 | **FR-SEC-07** | Model ID Validation | `src/server/routers/models.py::_validate_base_model_id` | Manual Verification |
-| **NFR-REL-01** | Thread-Safe Singletons | `src/config/settings.py::get_settings`<br>`src/server/events.py::EventBroadcaster` | `tests/unit/test_security_fixes.py::TestThreadSafeSingletons` |
+| **NFR-REL-01** | Thread-Safe Singletons | `src/config/settings.py::get_settings`<br>`src/server/events.py::EventBroadcaster`<br>`src/server/model_manager.py::ModelManager` | `tests/unit/test_security_fixes.py::TestThreadSafeSingletons`<br>`tests/unit/test_generation_utils.py::TestModelManagerSingleton` |
 | **NFR-REL-02** | Bounded SSE Queues | `src/server/events.py::MAX_SUBSCRIBER_QUEUE_SIZE`<br>`src/server/events.py::subscribe` | Manual Verification |
 | **NFR-REL-04** | Thread-Safe Set Operations | `src/server/events.py::_subscribers_lock`<br>`src/server/events.py::publish` | Manual Verification |
 | **NFR-REL-05** | TOCTOU Prevention | `src/server/model_manager.py::_detect_base_model_from_adapter` | Manual Verification |
