@@ -1,20 +1,31 @@
+#!/usr/bin/env python
+"""
+Test inference script using Unsloth for memory-efficient model loading.
+
+Uses Unsloth's optimized kernels for faster inference with 70% less VRAM.
+"""
 
 import json
+import os
 import sys
-import torch
 from pathlib import Path
-from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-# Add src to path to import core modules
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+# Add src to path FIRST (before any imports from src)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.prompt_builder import build_full_prompt
+# Import and set environment variables using centralized constants
+from src.core.constants import BASE_TO_UNSLOTH, ENV_TORCHDYNAMO_DISABLE
+
+os.environ[ENV_TORCHDYNAMO_DISABLE] = "1"
+
+# Now import other utilities
+from src.diversity.utils import get_lora_base_model, is_lora_adapter, load_model_with_unsloth
+
 
 def test_inference():
+    """Test inference with a finetuned model using Unsloth."""
     # Configuration
-    base_model_id = "mistralai/Mistral-7B-Instruct-v0.3"
-    adapter_path = "models/finetuned_models/Mistral-7B-Instruct-v0.3_irca_agent_v5-6"
+    adapter_path = "models/finetuned_models/exp001-baseline"
 
     # 1. Prepare Prompt
     print("📝 Preparing prompt...")
@@ -48,43 +59,46 @@ def test_inference():
         }
     ]
 
+    # Build prompt using IRCA format
+    from src.core.prompt_builder import build_full_prompt
+
     sample = {
         "system_instructions": system_instructions,
-        "example": "", # No few-shot example for this test
+        "example": "",  # No few-shot example for this test
         "available_functions_json": json.dumps(functions, indent=4),
         "user_query": "What's the weather like in Paris today? Also calculate 25 * 4.",
-        "assistant_completion": "" # Empty for generation
+        "assistant_completion": ""  # Empty for generation
     }
 
     prompt = build_full_prompt(sample)
     print(f"\n--- PROMPT ---\n{prompt}\n--------------")
 
-    # 2. Load Model
-    print("\n📦 Loading model...")
+    # 2. Load Model with Unsloth
+    print("\n📦 Loading model with Unsloth (70% less VRAM)...")
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16
+    # Detect base model from adapter config
+    if is_lora_adapter(adapter_path):
+        base_model = get_lora_base_model(adapter_path)
+        print(f"   Base model: {base_model}")
+
+        # Get Unsloth-optimized model name
+        unsloth_model = BASE_TO_UNSLOTH.get(base_model, base_model)
+        print(f"   Unsloth model: {unsloth_model}")
+    else:
+        raise ValueError(f"Not a LoRA adapter: {adapter_path}")
+
+    model, tokenizer = load_model_with_unsloth(
+        model_name=unsloth_model,
+        adapter_path=adapter_path,
+        max_seq_length=2048,
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(base_model_id)
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "right"
-
-    base_model = AutoModelForCausalLM.from_pretrained(
-        base_model_id,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True
-    )
-
-    model = PeftModel.from_pretrained(base_model, adapter_path)
-    model.eval()
+    print("✓ Model loaded with Unsloth optimizations")
 
     # 3. Generate
     print("\n🚀 Generating response...")
+    import torch
+
     inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
 
     with torch.no_grad():
@@ -102,6 +116,10 @@ def test_inference():
     completion = response[len(prompt):] if response.startswith(prompt) else response
 
     print(f"\n--- RESPONSE ---\n{completion}\n----------------")
+
+    # Cleanup
+    torch.cuda.empty_cache()
+
 
 if __name__ == "__main__":
     test_inference()
