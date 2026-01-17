@@ -1,0 +1,15 @@
+{
+  "multiply": 2,
+  "seed": 42,
+  "deduplicate": true,
+  "pipeline": [
+    {
+      "type": "shuffle_functions",
+      "probability": 0.9
+    },
+    {
+      "type": "newline_variation",
+      "probability": 0.5
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "checkpoints_dir": "experiments/exp001-augmentation-impact/models/augmented",
+  "train_set": "experiments/exp001-augmentation-impact/train_augmented",
+  "test_set": "experiments/exp001-augmentation-impact/test_augmented",
+  "eval_mode": "completion",
+  "apply_chat_template": true,
+  "train_samples": 436,
+  "test_samples": 111,
+  "checkpoints": [
+    {
+      "name": "checkpoint-38",
+      "path": "experiments/exp001-augmentation-impact/models/augmented/checkpoint-38",
+      "train": {
+        "mean_perplexity": 4.8402959742677325,
+        "ci_95_lower": 4.525450732148842,
+        "ci_95_upper": 5.178384998413401,
+        "std_perplexity": 3.6054615618116594,
+        "median_perplexity": 4.17111611366272
+      },
+      "test": {
+        "mean_perplexity": 5.6752263479404625,
+        "ci_95_lower": 5.0589614097868,
+        "ci_95_upper": 6.507839988427119,
+        "std_perplexity": 3.90265024719755,
+        "median_perplexity": 4.490665435791016
+      },
+      "gap": {
+        "absolute": 0.83493037367273,
+        "relative": 0.1724957271438433,
+        "relative_pct": "+17.2%"
+      }
+    },
+    {
+      "name": "checkpoint-76",
+      "path": "experiments/exp001-augmentation-impact/models/augmented/checkpoint-76",
+      "train": {
+        "mean_perplexity": 4.0645253354803135,
+        "ci_95_lower": 3.8773642630410303,
+        "ci_95_upper": 4.272380605818482,
+        "std_perplexity": 2.259893913558645,
+        "median_perplexity": 3.683582067489624
+      },
+      "test": {
+        "mean_perplexity": 5.4833759778254745,
+        "ci_95_lower": 4.941187426770056,
+        "ci_95_upper": 6.190755740667249,
+        "std_perplexity": 3.3653393971579018,
+        "median_perplexity": 4.329901218414307
+      },
+      "gap": {
+        "absolute": 1.418850642345161,
+        "relative": 0.34908151019742445,
+        "relative_pct": "+34.9%"
+      }
+    },
+    {
+      "name": "checkpoint-109",
+      "path": "experiments/exp001-augmentation-impact/models/augmented/checkpoint-109",
+      "train": {
+        "mean_perplexity": 3.5719533390408262,
+        "ci_95_lower": 3.3864497937672184,
+        "ci_95_upper": 3.7760240395339806,
+        "std_perplexity": 2.1688095785806727,
+        "median_perplexity": 3.293636202812195
+      },
+      "test": {
+        "mean_perplexity": 5.691911365534808,
+        "ci_95_lower": 5.030219648174337,
+        "ci_95_upper": 6.5941452162759795,
+        "std_perplexity": 4.149591580878963,
+        "median_perplexity": 4.343385219573975
+      },
+      "gap": {
+        "absolute": 2.1199580264939817,
+        "relative": 0.5935010413834948,
+        "relative_pct": "+59.4%"
+      }
+    },
+    {
+      "name": "final",
+      "path": "experiments/exp001-augmentation-impact/models/augmented",
+      "train": {
+        "mean_perplexity": 3.5719533390408262,
+        "ci_95_lower": 3.3864497937672184,
+        "ci_95_upper": 3.7760240395339806,
+        "std_perplexity": 2.1688095785806727,
+        "median_perplexity": 3.293636202812195
+      },
+      "test": {
+        "mean_perplexity": 5.691911365534808,
+        "ci_95_lower": 5.030219648174337,
+        "ci_95_upper": 6.5941452162759795,
+        "std_perplexity": 4.149591580878963,
+        "median_perplexity": 4.343385219573975
+      },
+      "gap": {
+        "absolute": 2.1199580264939817,
+        "relative": 0.5935010413834948,
+        "relative_pct": "+59.4%"
+      }
+    }
+  ],
+  "best_checkpoint": {
+    "name": "checkpoint-76",
+    "test_perplexity": 5.4833759778254745
+  }
+}

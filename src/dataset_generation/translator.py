@@ -16,16 +16,38 @@ class TranslationService:
     _model_cache: dict[str, Any] = {}
     _tokenizer_cache: dict[str, Any] = {}
 
+    # Mapping for languages with non-standard Helsinki-NLP model names or group models
+    # format: lang_code -> (model_name, prefix)
+    _SPECIAL_MODELS: dict[str, tuple[str, str | None]] = {
+        "bn": ("Helsinki-NLP/opus-mt-en-inc", ">>bn<<"),
+        "te": ("Helsinki-NLP/opus-mt-en-inc", ">>te<<"),
+        "ta": ("Helsinki-NLP/opus-mt-en-inc", ">>ta<<"),
+        "pt": ("Helsinki-NLP/opus-mt-tc-big-en-pt", None),
+        "tr": ("Helsinki-NLP/opus-mt-tc-big-en-tr", None),
+        "ja": ("Helsinki-NLP/opus-mt-en-jap", None),
+    }
+
     def __init__(
         self,
         target_lang: str = "fr",
         model_name_template: str = "Helsinki-NLP/opus-mt-en-{lang}",
         max_length: int = 512,
+        device: str | None = None,
     ):
         self.target_lang = target_lang
         self.max_length = max_length
-        self.model_name = model_name_template.format(lang=target_lang)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        if device:
+            self.device = device
+        else:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # Determine model name and prefix
+        if target_lang in self._SPECIAL_MODELS:
+            self.model_name, self.prefix = self._SPECIAL_MODELS[target_lang]
+        else:
+            self.model_name = model_name_template.format(lang=target_lang)
+            self.prefix = None
 
     def load_model(self) -> None:
         """Load model and tokenizer if not already loaded into cache."""
@@ -59,11 +81,16 @@ class TranslationService:
     def translate_batch(self, texts: list[str]) -> list[str]:
         """
         Translate a batch of texts from English to target language.
+        If target_lang is 'en', returns the texts as is.
         """
-        if not texts:
-            return []
+        if self.target_lang == "en" or not texts:
+            return texts
 
+        # Ensure model/tokenizer are loaded via properties
         self.load_model()
+
+        # Prepare texts with prefix if necessary (for group models like en-inc)
+        inputs_texts = [f"{self.prefix} {t}" for t in texts] if self.prefix else texts
 
         # Handle splitting if batch is too huge?
         # For now rely on caller to pass reasonable batches (dataset.map default is 1000)
@@ -71,7 +98,7 @@ class TranslationService:
 
         try:
             inputs = self.tokenizer(
-                texts, return_tensors="pt", padding=True, truncation=True, max_length=self.max_length
+                inputs_texts, return_tensors="pt", padding=True, truncation=True, max_length=self.max_length
             )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
@@ -84,4 +111,4 @@ class TranslationService:
             logger.error(f"Translation failed: {e}")
             # Fallback to original text? Or raise?
             # Raising is safer to detect issues.
-            raise e
+            raise

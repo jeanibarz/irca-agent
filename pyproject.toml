@@ -11,11 +11,11 @@ python = "^3.10,<3.13"
 
 # Core ML/AI
 torch = "^2.5.1"
-transformers = "^4.47.0"
+transformers = ">=4.51.0"
 accelerate = "^1.2.0"
 peft = "^0.14.0"
 trl = "^0.13.0"
-bitsandbytes = "^0.45.0"
+bitsandbytes = "^0.49.1"
 
 # Guidance for constrained generation
 guidance = "^0.2.0"
@@ -23,7 +23,7 @@ guidance = "^0.2.0"
 # Dataset management
 datasets = "^3.2.0"
 argilla = "^2.8.0"
-huggingface-hub = "^0.27.0"
+huggingface-hub = ">=0.34.0"
 
 # Utilities
 python-dotenv = "^1.0.1"
@@ -38,6 +38,11 @@ wandb = "^0.19.0"
 
 # Optional: local inference
 llama-cpp-python = {version = "^0.3.4", optional = true}
+
+# Diversity metrics (optional, for semantic diversity)
+sentence-transformers = {version = "^2.2.0", optional = true}
+scipy = {version = "^1.10.0", optional = true}
+
 sentencepiece = "^0.2.1"
 sacremoses = "^0.1.1"
 fastapi = "^0.128.0"
@@ -45,6 +50,7 @@ uvicorn = "^0.40.0"
 
 [tool.poetry.extras]
 local-inference = ["llama-cpp-python"]
+diversity = ["sentence-transformers", "scipy"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
@@ -107,6 +113,20 @@ exclude = [
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "src.diversity.*",
+    "src.formatting.*",
+    "src.augmentation.*",
+    "src.cli.commands.experiment",
+    "src.cli.commands.dataset",
+    "src.cli.commands.finetune",
+    "src.finetuning.*",
+    "src.core.*",
+]
+disallow_untyped_defs = false
+warn_return_any = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

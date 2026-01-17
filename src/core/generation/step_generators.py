@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import shortuuid
 from guidance import gen, select
 
-from core.domain import StepType, Trace, create_step
+from src.core.domain import StepType, Trace, create_step
 
 from .constants import (
     ACTION_CALL_FUNCTION,

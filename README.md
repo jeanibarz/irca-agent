@@ -19,6 +19,9 @@ IRCA-Agent (Iterative Resolution Cycle Agent) is a toolkit for generating high-q
 - **Modern CLI**: Clean command-line interface with Click
 - **HuggingFace Integration**: Easy dataset upload/download from HuggingFace Hub
 - **Argilla Integration**: Optional human-in-the-loop data curation
+- **Dataset Diversity Analysis**: Lexical, semantic, and perplexity-based diversity metrics
+- **Model Evaluation**: Completion-only perplexity for finetuned model assessment
+- **Interactive Playground**: Web-based UI for testing finetuned models
 
 ## 📁 Project Structure
 
@@ -36,8 +39,14 @@ irca-agent/
 │   │   ├── prompt_builder.py      # Prompt construction
 │   │   └── utils.py               # Utility functions
 │   ├── dataset_generation/        # Function schemas & variants
-│   └── finetuning/                # Model finetuning with PEFT/LoRA
-├── scripts/                       # Legacy scripts (deprecated)
+│   ├── diversity/                 # Dataset diversity analysis
+│   │   ├── lexical.py             # Lexical metrics (TTR, n-grams)
+│   │   ├── semantic.py            # Semantic metrics (embeddings)
+│   │   ├── perplexity.py          # Perplexity computation
+│   │   └── evaluation.py          # Model robustness evaluation
+│   ├── finetuning/                # Model finetuning with PEFT/LoRA
+│   └── server/                    # FastAPI backend for playground
+├── ui/                            # React frontend (Vite)
 ├── tests/                         # Unit & integration tests
 ├── datasets/                      # Generated datasets (gitignored)
 └── models/                        # Downloaded/finetuned models (gitignored)
@@ -130,6 +139,53 @@ irca dataset pull --source JeanIbarz/irca_agent_dataset_v5-5acc
 # List Argilla datasets
 irca dataset list --workspace irca_agent
 ```
+
+### Analyze Dataset Diversity
+
+```bash
+# Compare original vs augmented dataset diversity
+irca dataset diversity --original datasets/original.jsonl --augmented datasets/augmented.jsonl
+
+# Evaluate model robustness with completion-only perplexity
+irca dataset diversity --dataset datasets/test.jsonl \
+  --model models/finetuned_models/qwen3-4b-lora \
+  --baseline-model Qwen/Qwen3-4B \
+  --eval-mode completion
+
+# Evaluate generalization (train vs test)
+irca dataset diversity \
+  --train-set datasets/train.jsonl \
+  --test-set datasets/test.jsonl \
+  --model models/finetuned_models/qwen3-4b-lora \
+  --eval-mode completion
+```
+
+## 🎮 Playground Dashboard
+
+An interactive web UI for testing finetuned models with rich trace rendering.
+
+### Start the Playground
+
+```bash
+# Terminal 1: Start the backend (FastAPI)
+WORKSPACE_DIR=$(pwd) poetry run uvicorn src.server.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 2: Start the frontend (React/Vite)
+cd ui && npm run dev -- --host 0.0.0.0 --port 3000
+```
+
+### Access
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+
+### Features
+
+- **Model Selection**: Switch between base models and LoRA adapters
+- **GPU Model Loading**: Keep models in memory across requests
+- **Rich Trace Rendering**: Specialized display for Thoughts, Function Calls, and Outputs
+- **Hyperparameter Control**: Adjust Temperature, Top-P, and Max Tokens in real-time
 
 ## 📊 Datasets
 

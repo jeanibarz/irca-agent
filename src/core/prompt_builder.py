@@ -15,7 +15,7 @@ import logging
 import random
 from typing import Any
 
-from core.utils import extract_and_remove
+from src.core.utils import extract_and_remove
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +52,6 @@ The functions available to you are described below.
 
 ### FUNCTIONS AVAILABLE
 {available_functions_json}
-
-Note: ensure you only use information provided in the context above or below. Do not make up information you are missing. If some information is missing and can't be gathered by using functions available to you, just admit you don't know and ask the user for clarification or more information.
 
 ### USER QUERY
 {user_query}
@@ -92,15 +90,15 @@ def parse_corrected_agent_trace(full_prompt: str) -> dict[str, str]:
 
     example, full_prompt = extract_and_remove(
         start_marker="EXAMPLE:",
-        end_marker="<|wait|>",
+        end_marker="The functions available to you are described below.",
         full_prompt=full_prompt,
         include_start_marker=False,
-        include_end_marker=True,
+        include_end_marker=False,
     )
 
     available_functions_json, full_prompt = extract_and_remove(
         start_marker="### FUNCTIONS AVAILABLE",
-        end_marker="\n\n",
+        end_marker="### USER QUERY",
         full_prompt=full_prompt,
         include_start_marker=False,
         include_end_marker=False,
@@ -211,8 +209,14 @@ class InstructionFormatter:
         self.iteration_count += 1
         logger.debug(f"Formatting sample {self.iteration_count}")
 
-        full_prompt = sample["corrected_agent_trace"][0]["value"]
-        full_prompt = full_prompt.replace("\r\n", "\n")
+        try:
+            full_prompt = sample["corrected_agent_trace"][0]["value"]
+            full_prompt = full_prompt.replace("\r\n", "\n")
+        except (TypeError, KeyError, IndexError) as e:
+            logger.error(f"Error accessing 'corrected_agent_trace' in sample: {e}")
+            logger.error(f"Sample type: {type(sample)}")
+            logger.error(f"Sample: {sample}")
+            raise e
 
         parsed_data = parse_corrected_agent_trace(full_prompt)
 

@@ -4,8 +4,9 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from server.model_manager import ModelManager
-from server.schemas import FunctionDefinition
+from src.formatting.chat_template import get_stop_sequences
+from src.server.model_manager import ModelManager
+from src.server.schemas import FunctionDefinition
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -63,6 +64,10 @@ async def generate_synthetic_query(req: SyntheticQueryRequest) -> SyntheticQuery
         # Fallback if template fails
         prompt = f"[INST] {content} [/INST]"
 
+    # Get model-specific stop sequences and add synthetic-specific ones
+    stop_sequences = get_stop_sequences(tokenizer)
+    stop_sequences.extend(["\n", "User:", "Assistant:"])
+
     try:
         output = await manager.generate(
             prompt=prompt,
@@ -70,7 +75,7 @@ async def generate_synthetic_query(req: SyntheticQueryRequest) -> SyntheticQuery
             max_new_tokens=100,
             temperature=0.8,
             top_p=0.95,
-            stop_tokens=["\n", "[/INST]", "User:", "Assistant:"],
+            stop_tokens=stop_sequences,
         )
 
         # Clean up output

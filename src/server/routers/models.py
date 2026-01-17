@@ -1,10 +1,12 @@
+import json
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from config import get_settings
-from server.model_manager import ModelManager
+from src.config import get_settings
+from src.server.model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
 
@@ -12,10 +14,24 @@ router = APIRouter()
 settings = get_settings()
 
 
+def get_adapter_base_model(adapter_path: str) -> str | None:
+    """Read base model from adapter_config.json."""
+    config_path = Path(adapter_path) / "adapter_config.json"
+    if config_path.exists():
+        try:
+            with open(config_path) as f:
+                config = json.load(f)
+            return config.get("base_model_name_or_path")
+        except (json.JSONDecodeError, OSError):
+            return None
+    return None
+
+
 class ModelInfo(BaseModel):
     id: str
     type: str  # "base" or "adapter"
     path: str
+    base_model: str | None = None  # For adapters, the required base model
 
 
 class LoadModelRequest(BaseModel):
@@ -46,7 +62,15 @@ async def list_models() -> list[ModelInfo]:
     if finetuned_dir.exists():
         for item in finetuned_dir.iterdir():
             if item.is_dir():
-                models.append(ModelInfo(id=item.name, type="adapter", path=str(item)))
+                base_model = get_adapter_base_model(str(item))
+                models.append(
+                    ModelInfo(
+                        id=item.name,
+                        type="adapter",
+                        path=str(item),
+                        base_model=base_model,
+                    )
+                )
 
     return models
 
@@ -55,10 +79,14 @@ async def list_models() -> list[ModelInfo]:
 async def load_model(request: LoadModelRequest) -> dict[str, str]:
     """
     Load a model into memory.
+
+    When loading an adapter, the base model is auto-detected from adapter_config.json.
     """
     manager = ModelManager.get_instance()
     try:
         adapter_path = None
+        base_model_id = request.base_model_id
+
         if request.adapter_id:
             finetuned_dir = settings.finetuned_models_path
             potential_path = finetuned_dir / request.adapter_id
@@ -67,10 +95,17 @@ async def load_model(request: LoadModelRequest) -> dict[str, str]:
             else:
                 adapter_path = request.adapter_id  # Assume absolute or HF ID
 
-        await manager.load_model(request.base_model_id, adapter_path, alias=request.alias)
+            # Auto-detect base model from adapter config
+            detected_base = get_adapter_base_model(adapter_path)
+            if detected_base:
+                if base_model_id != detected_base:
+                    logger.info(f"Auto-correcting base model: {base_model_id} -> {detected_base}")
+                base_model_id = detected_base
+
+        await manager.load_model(base_model_id, adapter_path, alias=request.alias)
         return {
             "status": "success",
-            "message": f"Loaded {request.base_model_id} (adapter: {adapter_path}) as '{request.alias}'",
+            "message": f"Loaded {base_model_id} (adapter: {adapter_path}) as '{request.alias}'",
         }
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e

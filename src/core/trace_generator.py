@@ -6,14 +6,14 @@ New code should import from `core.generation` instead.
 
 Example:
     # Old way (still works)
-    from core.trace_generator import GuidedTraceGenerator
+    from src.core.trace_generator import GuidedTraceGenerator
 
     # New way (preferred)
-    from core.generation import TraceGenerator
+    from src.core.generation import TraceGenerator
 """
 
 # Re-export everything from the new location
-from core.generation import (
+from src.core.generation import (
     ACTION_CALL_FUNCTION,
     ACTION_CHOICE_PROMPT,
     ACTION_FINAL_ANSWER,

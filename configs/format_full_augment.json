@@ -1,0 +1,36 @@
+{
+  "seed": 42,
+  "multiply": 3,
+  "deduplicate": true,
+  "source_column": "corrected_agent_trace",
+  "structural": [
+    {
+      "type": "translate",
+      "probability": 0.67,
+      "params": {
+        "languages": ["fr", "es"],
+        "weights": [1, 1],
+        "targets": ["query", "answer"]
+      }
+    }
+  ],
+  "formatting": [
+    {
+      "type": "shuffle_functions",
+      "probability": 0.8
+    },
+    {
+      "type": "indent_functions",
+      "probability": 0.5,
+      "params": {
+        "choices": [null, 2, 4]
+      }
+    }
+  ],
+  "presentation": [
+    {
+      "type": "newline_variation",
+      "probability": 0.2
+    }
+  ]
+}

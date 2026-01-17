@@ -10,7 +10,7 @@ This module contains the core functionality for generating agent traces:
 """
 
 # Re-export commonly used items from domain (always available)
-from core.domain import (
+from .domain import (
     ActionChoiceStep,
     BaseStep,
     FinalAnswerStep,
@@ -25,12 +25,12 @@ from core.domain import (
 )
 
 # Backwards compatibility - import from step_factory still works
-from core.step_factory import STEP_MODEL_MAPPING, create_step_model
+from .step_factory import STEP_MODEL_MAPPING, create_step_model
 
 # Generation modules require additional dependencies (guidance, shortuuid, etc.)
 # Import them lazily to allow basic usage without all deps
 try:
-    from core.generation import GuidedTraceGenerator, TraceGenerator
+    from .generation import GuidedTraceGenerator, TraceGenerator
 
     _GENERATION_AVAILABLE = True
 except ImportError:

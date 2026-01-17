@@ -1,0 +1,74 @@
+{
+  "citation": "",
+  "description": "",
+  "features": {
+    "agent_trace": {
+      "dtype": "string",
+      "id": "field",
+      "_type": "Value"
+    },
+    "user_query": {
+      "dtype": "string",
+      "id": "field",
+      "_type": "Value"
+    },
+    "available_functions": {
+      "dtype": "string",
+      "id": "field",
+      "_type": "Value"
+    },
+    "corrected_agent_trace": [
+      {
+        "user_id": {
+          "dtype": "string",
+          "id": "question",
+          "_type": "Value"
+        },
+        "value": {
+          "dtype": "string",
+          "id": "suggestion",
+          "_type": "Value"
+        },
+        "status": {
+          "dtype": "string",
+          "id": "question",
+          "_type": "Value"
+        }
+      }
+    ],
+    "corrected_agent_trace-suggestion": {
+      "dtype": "string",
+      "id": "suggestion",
+      "_type": "Value"
+    },
+    "corrected_agent_trace-suggestion-metadata": {
+      "type": {
+        "dtype": "string",
+        "id": "suggestion-metadata",
+        "_type": "Value"
+      },
+      "score": {
+        "dtype": "float32",
+        "id": "suggestion-metadata",
+        "_type": "Value"
+      },
+      "agent": {
+        "dtype": "string",
+        "id": "suggestion-metadata",
+        "_type": "Value"
+      }
+    },
+    "external_id": {
+      "dtype": "string",
+      "id": "external_id",
+      "_type": "Value"
+    },
+    "metadata": {
+      "dtype": "string",
+      "id": "metadata",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}

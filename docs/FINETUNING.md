@@ -66,17 +66,22 @@ The artifacts include:
 To improve model robustness and enable it to handle queries in different languages while maintaining English-based reasoning, `irca-agent` supports on-the-fly dataset augmentation.
 
 ### How it Works
-The system diversifies a configurable subset of the training dataset's `User Queries` and `Final Answers` by translating them into target languages (e.g., French, Spanish) during the data loading phase. Reasoning traces remain in English to maintain internal logic consistency. This is implemented using **replacement logic**, meaning the total dataset size remains constant while its linguistic diversity increases.
+The system diversifies a configurable subset of the training dataset's `User Queries` and `Final Answers` by translating them into target languages (e.g., French, Spanish). Reasoning traces remain in English to maintain internal logic consistency.
+
+There are two modes for augmentation:
+1. **Offline (Static)**: Translations are pre-calculated before the LLM is loaded. This is the **recommended** mode as it avoids CPU/GPU resource competition and is more stable for parallel processing.
+2. **Online (Dynamic)**: Translations happen on-the-fly via `IterableDataset`. This provides maximum variety across epochs but requires careful resource tuning to avoid stalling the training loop.
 
 ### Configuration
 
 | CLI Flag | Environment Variable | Default | Description |
 |----------|----------------------|---------|-------------|
 | `--augment` | `AUGMENT_ENABLED` | `False` | Enable multilingual augmentation. |
-| `--augment_lang` | `AUGMENT_LANGUAGES` | `['fr']` | List of target languages (space separated in CLI). |
-| `--augment_ratio` | `AUGMENT_RATIO` | `0.5` | Probability (ratio) of a sample being augmented. |
-| `--augment_model_template` | `AUGMENT_MODEL_NAME_TEMPLATE` | `Helsinki-NLP/opus-mt-en-{lang}` | HF template for translation models. |
-| `--augment_max_length` | `AUGMENT_MAX_LENGTH` | `512` | Max tokens for translation. |
+| `--augment-dynamic` | `AUGMENT_DYNAMIC` | `True` | Toggle between Online (True) and Offline (False) modes. |
+| `--augment-lang` | `AUGMENT_LANGUAGES` | `['fr']` | List of target languages. |
+| `--augment-ratio` | `AUGMENT_RATIO` | `0.5` | Ratio of the dataset to diversify. |
+| `--augment-model-template` | `AUGMENT_MODEL_NAME_TEMPLATE` | `Helsinki-NLP/opus-mt-en-{lang}` | HF template for translation models. |
+| `--augment-max-length` | `AUGMENT_MAX_LENGTH` | `512` | Max tokens for translation. |
 
 ### Example
 

@@ -54,6 +54,11 @@ models/
 # Datasets (stored separately)
 datasets/
 
+# Experiment data files (too large for git)
+experiments/**/data-*.arrow
+experiments/**/cache-*.arrow
+experiments/**/models/
+
 # Weights & Biases logs
 wandb/
 
@@ -75,3 +80,20 @@ htmlcov/
 coverage.xml
 
 # Assistant memory files
+
+# Debug/temporary files
+debug_*.py
+test_*.py
+!tests/**/test_*.py
+inspect_*.py
+profile_*.py
+sample_*.txt
+out.txt
+*.log
+*.pid
+
+# Temporary scripts
+scripts/check_*.py
+scripts/verify_*.py
+scripts/test_*.py
+scripts/fix_*.py

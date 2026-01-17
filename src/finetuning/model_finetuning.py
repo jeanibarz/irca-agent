@@ -19,129 +19,12 @@ import transformers
 import trl
 
 import datasets  # type: ignore
-from config import get_settings
-from core import prompt_builder, utils
-from datasets import Dataset  # type: ignore
+from src.config import get_settings
+from src.core import utils
+from src.formatting.chat_template import apply_chat_template, irca_to_messages
 
-# Configure logger
 # Configure logger
 logger = logging.getLogger(__name__)
-
-
-def augment_dataset(original_dataset: Dataset, config: dict[str, Any]) -> Dataset:
-    """
-    Diversify the dataset by translating a subset of examples.
-    Does NOT increase total dataset size (Replacement logic).
-    Reasoning traces remain in English.
-    """
-    if not config.get("augment_enabled"):
-        return original_dataset
-
-    import copy
-    import random
-
-    from core.generation.constants import FINAL_ANSWER_PROMPT
-    from core.prompt_builder import build_full_prompt, parse_corrected_agent_trace
-    from dataset_generation.translator import TranslationService
-
-    languages = config["augment_languages"]
-    total_ratio = config["augment_ratio"]
-    is_dynamic = config.get("augment_dynamic", False)
-
-    logger.info(f"Diversifying dataset (Ratio: {total_ratio}, Languages: {languages}, Dynamic: {is_dynamic})")
-
-    def transform_batch(batch: dict, batch_indices: list[int] | None = None) -> dict:
-        # Create a local copy to avoid modifying original if needed
-        # But 'batch' is already a copy for map/set_transform
-
-        # Decide which items to translate in THIS batch
-        lang_groups: dict[str, list[int]] = {}
-
-        for i in range(len(batch["corrected_agent_trace"])):
-            # If we have indices (static mode), we can use them for determinism
-            # If not (dynamic/iterable), we use random.random()
-            should_diversify = False
-            if not is_dynamic and batch_indices is not None:
-                # Deterministic based on global index + seed
-                random.seed(config.get("augment_seed", 42) + batch_indices[i])
-                should_diversify = random.random() < total_ratio
-                lang = random.choice(languages) if should_diversify else None
-            else:
-                # Stochastic (dynamic mode or missing indices)
-                should_diversify = random.random() < total_ratio
-                lang = random.choice(languages) if should_diversify else None
-
-            if lang:
-                if lang not in lang_groups:
-                    lang_groups[lang] = []
-                lang_groups[lang].append(i)
-
-        if not lang_groups:
-            return batch
-
-        # Process each language group
-        for lang, local_indices in lang_groups.items():
-            translator = TranslationService(
-                target_lang=lang,
-                model_name_template=config.get("augment_model_name_template", "Helsinki-NLP/opus-mt-en-{lang}"),
-                max_length=config.get("augment_max_length", 512),
-            )
-
-            # Extract texts
-            query_texts = []
-            answer_mapping = []  # (local_idx, answer_text_or_None)
-            parsed_data = []  # Store parts for reconstruction
-
-            for local_idx in local_indices:
-                row_list = batch["corrected_agent_trace"][local_idx]
-                full_prompt = row_list[0]["value"].replace("\r\n", "\n")
-                parts = parse_corrected_agent_trace(full_prompt)
-                parsed_data.append(parts)
-
-                query_texts.append(parts["user_query"])
-
-                comp = parts["assistant_completion"]
-                if FINAL_ANSWER_PROMPT in comp:
-                    parts_split = comp.rsplit(FINAL_ANSWER_PROMPT, 1)
-                    answer_mapping.append(parts_split[1].strip())
-                else:
-                    answer_mapping.append(None)
-
-            # Translate (using cached model in TranslationService)
-            trans_queries = translator.translate_batch(query_texts)
-
-            ans_to_trans = [a for a in answer_mapping if a is not None]
-            trans_answers = translator.translate_batch(ans_to_trans) if ans_to_trans else []
-
-            # Reconstruct
-            ans_idx = 0
-            for i, local_idx in enumerate(local_indices):
-                parts = parsed_data[i]
-                parts["user_query"] = trans_queries[i]
-
-                if answer_mapping[i] is not None:
-                    original_comp = parts["assistant_completion"]
-                    pre, _ = original_comp.rsplit(FINAL_ANSWER_PROMPT, 1)
-                    parts["assistant_completion"] = f"{pre}{FINAL_ANSWER_PROMPT}{trans_answers[ans_idx]}"
-                    ans_idx += 1
-
-                new_full_prompt = build_full_prompt(parts)
-                new_row = copy.deepcopy(batch["corrected_agent_trace"][local_idx])
-                new_row[0]["value"] = new_full_prompt
-                batch["corrected_agent_trace"][local_idx] = new_row
-
-        return batch
-
-    if is_dynamic:
-        # Truly online: transform happens every time the item is accessed.
-        # Works best with num_workers > 0 in Trainer/DataLoader.
-        iterable_ds = original_dataset.to_iterable_dataset()
-        return iterable_ds.map(transform_batch, batched=True, batch_size=8)
-
-    # Static (Offline) Diversification
-    return original_dataset.map(
-        transform_batch, batched=True, batch_size=8, load_from_cache_file=False, desc="Diversifying dataset"
-    )
 
 
 def setup_logging(level: int = logging.DEBUG) -> logging.Logger:
@@ -238,6 +121,86 @@ def load_and_prepare_model(
     return model, tokenizer
 
 
+def create_formatting_func(tokenizer: Any) -> callable:
+    """
+    Create a formatting function that applies the model's chat template.
+
+    This ensures training data includes proper EOS tokens for the specific model.
+
+    Args:
+        tokenizer: The model's tokenizer.
+
+    Returns:
+        A function that formats samples for training.
+    """
+
+    def formatting_func(examples: dict[str, Any]) -> list[str]:
+        """Format a batch of examples using the model's chat template."""
+        texts = []
+
+        # Handle both single example and batched examples
+        if isinstance(examples.get("text"), list):
+            # Batched - examples is {key: [values]}
+            batch_size = len(examples["text"])
+            for i in range(batch_size):
+                text = examples["text"][i]
+                formatted = _format_single_example(text, tokenizer)
+                texts.append(formatted)
+        else:
+            # Single example
+            text = examples.get("text", "")
+            formatted = _format_single_example(text, tokenizer)
+            texts.append(formatted)
+
+        return texts
+
+    return formatting_func
+
+
+def _format_single_example(text: str, tokenizer: Any) -> str:
+    """
+    Format a single text example using the model's chat template.
+
+    If the text is already in IRCA format (with ### markers), parse it
+    and convert to the model's native chat format.
+
+    Args:
+        text: The raw text (potentially in IRCA format).
+        tokenizer: The model's tokenizer.
+
+    Returns:
+        Formatted text with proper chat template and EOS token.
+    """
+    from src.core.prompt_builder import parse_corrected_agent_trace
+
+    # Check if this is IRCA format (has our markers)
+    if "### ITERATIVE RESOLUTION CYCLE" in text or "### INSTRUCTIONS" in text:
+        try:
+            # Parse IRCA format to components
+            parsed = parse_corrected_agent_trace(text)
+
+            # Convert to messages format
+            messages = irca_to_messages(parsed)
+
+            # Apply chat template
+            formatted = apply_chat_template(tokenizer, messages, add_generation_prompt=False)
+
+            # Ensure EOS token is present
+            if tokenizer.eos_token and not formatted.rstrip().endswith(tokenizer.eos_token):
+                formatted = formatted.rstrip() + tokenizer.eos_token
+
+            return formatted
+        except Exception as e:
+            logger.warning(f"Failed to parse IRCA format, using raw text: {e}")
+            # Fall through to raw text handling
+
+    # Not IRCA format or parsing failed - use as-is but ensure EOS
+    if tokenizer.eos_token and not text.rstrip().endswith(tokenizer.eos_token):
+        text = text.rstrip() + tokenizer.eos_token
+
+    return text
+
+
 def setup_trainer(
     model: Any,
     tokenizer: Any,
@@ -248,22 +211,28 @@ def setup_trainer(
     """
     Set up the SFT trainer with training arguments.
 
+    Uses the model's native chat template for formatting, ensuring proper
+    EOS tokens are included in training data.
+
     Args:
         model: The model to train
         tokenizer: The tokenizer
-        dataset: Training dataset
+        dataset: Training dataset (must have 'text' column)
         config: Training configuration
         peft_config: Optional LoRA configuration
 
     Returns:
         Configured SFTTrainer instance
     """
-    training_args = transformers.TrainingArguments(
+    # Create formatting function that applies chat template
+    formatting_func = create_formatting_func(tokenizer)
+
+    training_args = trl.SFTConfig(
         output_dir=config["output_dir"],
         num_train_epochs=config["num_train_epochs"],
         per_device_train_batch_size=1,
         gradient_accumulation_steps=10,
-        gradient_checkpointing=False,
+        gradient_checkpointing=config.get("gradient_checkpointing", True),
         optim="adamw_8bit",
         logging_steps=2,
         save_strategy="epoch",
@@ -274,21 +243,21 @@ def setup_trainer(
         warmup_ratio=0.03,
         lr_scheduler_type="constant",
         disable_tqdm=False,
-        dataloader_num_workers=4 if config.get("augment_dynamic") else 0,
-        dataloader_pin_memory=True if config.get("augment_dynamic") else False,
+        max_seq_length=config.get("max_seq_length", 4096),
+        packing=False,
+        # Note: We use formatting_func instead of dataset_text_field
     )
+
+    logger.info(f"Using chat template formatting for model: {config['base_model']}")
+    logger.info(f"EOS token: {tokenizer.eos_token!r} (ID: {tokenizer.eos_token_id})")
 
     return trl.SFTTrainer(
         model=model,
         train_dataset=dataset["train"],
         peft_config=peft_config,
-        max_seq_length=config.get("max_seq_length", 4096),
-        tokenizer=tokenizer,
-        packing=not config.get(
-            "augment_dynamic"
-        ),  # Disable packing in dynamic mode to allow real-time per-sample variety
-        formatting_func=prompt_builder.format_instruction,
+        processing_class=tokenizer,
         args=training_args,
+        formatting_func=formatting_func,  # Apply chat template per sample
     )
 
 
@@ -302,8 +271,14 @@ def parse_arguments() -> argparse.Namespace:
         "--model_type",
         type=str,
         default="mistral",
-        choices=["mistral", "tinyllama", "qwen-4b", "qwen-14b"],
+        choices=["mistral", "mistral-v3", "tinyllama", "qwen-7b", "qwen-4b", "qwen-14b", "qwen3-8b", "qwen3-4b"],
         help="Type of model to train",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default=None,
+        help="Dataset path or HuggingFace ID (must have 'text' column)",
     )
     parser.add_argument(
         "--epochs",
@@ -321,41 +296,6 @@ def parse_arguments() -> argparse.Namespace:
         "--push_to_hub",
         action="store_true",
         help="Push trained model to HuggingFace Hub",
-    )
-    parser.add_argument(
-        "--augment",
-        action="store_true",
-        help="Enable augmentation",
-    )
-    parser.add_argument(
-        "--augment_lang",
-        nargs="+",
-        help="Languages for augmentation (e.g. fr es)",
-    )
-    parser.add_argument(
-        "--augment_ratio",
-        type=float,
-        help="Augmentation ratio",
-    )
-    parser.add_argument(
-        "--augment_model_template",
-        type=str,
-        help="Translation model name template",
-    )
-    parser.add_argument(
-        "--augment_max_length",
-        type=int,
-        help="Maximum translation length",
-    )
-    parser.add_argument(
-        "--augment_seed",
-        type=int,
-        help="Random seed for diversification",
-    )
-    parser.add_argument(
-        "--augment_dynamic",
-        action="store_true",
-        help="Enable online diversification (slower, but varies across runs)",
     )
     return parser.parse_args()
 
@@ -377,26 +317,14 @@ def main() -> None:
     config = settings.get_training_config(args.model_type)
 
     # Apply command-line overrides
+    if args.dataset is not None:
+        config["dataset"] = args.dataset
     if args.epochs is not None:
         config["num_train_epochs"] = args.epochs
     if args.learning_rate is not None:
         config["learning_rate"] = args.learning_rate
     if args.push_to_hub:
         config["push_to_hub"] = True
-    if args.augment:
-        config["augment_enabled"] = True
-    if args.augment_lang:
-        config["augment_languages"] = args.augment_lang
-    if args.augment_ratio:
-        config["augment_ratio"] = args.augment_ratio
-    if args.augment_model_template:
-        config["augment_model_name_template"] = args.augment_model_template
-    if args.augment_max_length:
-        config["augment_max_length"] = args.augment_max_length
-    if args.augment_seed:
-        config["augment_seed"] = args.augment_seed
-    if args.augment_dynamic:
-        config["augment_dynamic"] = True
 
     logger.info(f"Training configuration: {config}")
 
@@ -415,11 +343,34 @@ def main() -> None:
     # Load dataset
     logger.info(f"Loading dataset: {config['dataset']}")
     try:
-        dataset = datasets.load_dataset(config["dataset"])  # type: ignore
-        logger.info(f"Dataset loaded: {len(dataset['train'])} training examples")
+        import os
 
-        # Augment dataset
-        dataset["train"] = augment_dataset(dataset["train"], config)
+        local_path = settings.datasets_path / config["dataset"].split("/")[-1]
+
+        if os.path.exists(local_path):
+            logger.info(f"Loading dataset from local disk: {local_path}")
+            loaded_ds = datasets.load_from_disk(str(local_path))
+            if isinstance(loaded_ds, datasets.Dataset):
+                dataset = datasets.DatasetDict({"train": loaded_ds})
+            else:
+                dataset = loaded_ds
+        elif os.path.exists(config["dataset"]):
+            logger.info(f"Loading dataset from path: {config['dataset']}")
+            loaded_ds = datasets.load_from_disk(config["dataset"])
+            if isinstance(loaded_ds, datasets.Dataset):
+                dataset = datasets.DatasetDict({"train": loaded_ds})
+            else:
+                dataset = loaded_ds
+        else:
+            logger.info("Dataset not found locally, attempting to load from HuggingFace Hub")
+            dataset = datasets.load_dataset(config["dataset"])  # type: ignore
+
+        # Validate dataset has 'text' column
+        if "text" not in dataset["train"].column_names:
+            logger.critical(f"Dataset must have a 'text' column. Found: {dataset['train'].column_names}")
+            sys.exit(1)
+
+        logger.info(f"Dataset loaded: {len(dataset['train'])} training examples")
 
     except Exception as e:
         logger.critical(f"Failed to load dataset: {e}")

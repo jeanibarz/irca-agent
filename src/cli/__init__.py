@@ -11,7 +11,7 @@ Usage:
 
 import click
 
-from .commands import dataset, finetune, generate
+from .commands import dataset, experiment, finetune, generate
 
 
 @click.group()
@@ -33,6 +33,7 @@ def cli(ctx: click.Context, verbose: bool) -> None:
 cli.add_command(generate.generate)
 cli.add_command(finetune.finetune)
 cli.add_command(dataset.dataset)
+cli.add_command(experiment.experiment)
 
 
 def main() -> None:

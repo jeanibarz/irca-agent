@@ -1,0 +1,11 @@
+{
+  "id": "301aa297-d52d-4bf3-b194-c8200009c7c8",
+  "title": "Can you check the current weat...",
+  "updated_at": "2026-01-17T11:06:43.759337",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Can you check the current weather in New York and calculate my monthly loan payment of $10,000 with an annual interest rate of 5% over a period of 5 years?"
+    }
+  ]
+}

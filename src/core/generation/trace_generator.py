@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Protocol, cast
 import torch
 from guidance import models
 
-from core.domain import StepType, Trace, create_step
-from core.prompt.function_calling_oneshot import prompt_template as agent_prompt_template
+from src.core.domain import StepType, Trace, create_step
+from src.core.prompt.function_calling_oneshot import prompt_template as agent_prompt_template
 
 from .constants import ACTION_CALL_FUNCTION
 from .step_generators import (

@@ -1,0 +1,23 @@
+{
+  "multiply": 4,
+  "seed": 42,
+  "deduplicate": true,
+  "pipeline": [
+    {
+      "type": "translate",
+      "probability": 0.5,
+      "params": {
+        "languages": ["fr", "es", "de"],
+        "weights": [0.4, 0.4, 0.2]
+      }
+    },
+    {
+      "type": "shuffle_functions",
+      "probability": 0.8
+    },
+    {
+      "type": "newline_variation",
+      "probability": 0.3
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "multiply": 3,
+  "seed": 42,
+  "deduplicate": true,
+  "pipeline": [
+    {
+      "type": "translate",
+      "probability": 0.8,
+      "params": {
+        "languages": ["fr", "es", "de", "ja", "zh"]
+      }
+    }
+  ]
+}

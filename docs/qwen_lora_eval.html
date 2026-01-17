@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRCA Diversity Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+:root {
+    --primary: #3b82f6;
+    --primary-light: rgba(59, 130, 246, 0.1);
+    --secondary: #22c55e;
+    --secondary-light: rgba(34, 197, 94, 0.1);
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --bg: #ffffff;
+    --bg-alt: #f9fafb;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --text: #f9fafb;
+        --text-muted: #9ca3af;
+        --bg: #111827;
+        --bg-alt: #1f2937;
+        --border: #374151;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg-alt);
+    color: var(--text);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.timestamp {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Cards */
+.card {
+    background: var(--bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.card-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.card-header .icon {
+    font-size: 1.25rem;
+}
+
+/* Summary Card */
+.summary-card {
+    background: linear-gradient(135deg, var(--primary-light), var(--secondary-light));
+    border: 1px solid var(--primary);
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.summary-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--bg);
+    border-radius: var(--radius);
+}
+
+.summary-item .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.summary-item .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.summary-item .delta {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.delta.positive { color: var(--secondary); }
+.delta.negative { color: var(--danger); }
+.delta.neutral { color: var(--text-muted); }
+
+/* Tables */
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.metrics-table th,
+.metrics-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.metrics-table th {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.metrics-table td.numeric {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    text-align: right;
+}
+
+.metrics-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Charts */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 1rem 0;
+}
+
+.chart-container.small {
+    height: 200px;
+}
+
+/* Grid layout */
+.two-column {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Status badges */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 9999px;
+}
+
+.badge.success {
+    background: var(--secondary-light);
+    color: var(--secondary);
+}
+
+.badge.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.badge.info {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+/* Collapsible sections */
+.collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.collapsible-header::before {
+    content: '\25BC';
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.collapsible-header.collapsed::before {
+    transform: rotate(-90deg);
+}
+
+.collapsible-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.collapsible-content.collapsed {
+    max-height: 0 !important;
+}
+
+/* Interpretation box */
+.interpretation {
+    background: var(--bg-alt);
+    border-left: 4px solid var(--primary);
+    padding: 1rem;
+    margin-top: 1rem;
+    border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.interpretation p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .two-column {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Print styles */
+@media print {
+    body {
+        background: white;
+    }
+
+    .container {
+        max-width: none;
+        padding: 0;
+    }
+
+    .card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid var(--border);
+    }
+}
+</style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>IRCA Diversity Report</h1>
+            <p class="timestamp">Generated: <time id="generated-time"></time></p>
+        </header>
+
+        <main id="report-content">
+            <!-- Content injected by JavaScript -->
+        </main>
+
+        <footer>
+            <p>Generated by IRCA Dataset Toolkit</p>
+        </footer>
+    </div>
+
+    <script>
+        const reportData = {
+  "generated_at": "2026-01-16T22:38:26.523314+00:00",
+  "comparison_mode": false,
+  "dataset": {
+    "path": "Unknown",
+    "sample_count": 30,
+    "lexical": {},
+    "semantic": {},
+    "perplexity": {}
+  },
+  "metadata": {
+    "dataset_path": "/home/jean/git/irca-agent/datasets/irca_agent_dataset_v5-5acc-formatted-augmented",
+    "model": "/home/jean/git/irca-agent/models/finetuned_models/Qwen3-4B_irca_agent_v5-6",
+    "baseline_model": "Qwen/Qwen3-4B",
+    "eval_mode": "completion"
+  }
+};
+
+// Utility functions
+function formatNumber(n, decimals = 2) {
+    if (n === null || n === undefined) return 'N/A';
+    if (typeof n !== 'number') return n;
+    return n.toLocaleString(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
+}
+
+function formatPercentage(n) {
+    if (n === null || n === undefined) return 'N/A';
+    return (n * 100).toFixed(1) + '%';
+}
+
+function formatDelta(value) {
+    if (!value || typeof value !== 'string') return '';
+    const isPositive = value.startsWith('+');
+    const isNegative = value.startsWith('-');
+    const className = isPositive ? 'positive' : isNegative ? 'negative' : 'neutral';
+    return `<span class="delta ${className}">${value}</span>`;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Chart color scheme
+const colors = {
+    primary: '#3b82f6',
+    primaryLight: 'rgba(59, 130, 246, 0.2)',
+    secondary: '#22c55e',
+    secondaryLight: 'rgba(34, 197, 94, 0.2)',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    gray: '#94a3b8'
+};
+
+// Detect dark mode
+const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+Chart.defaults.color = isDarkMode ? '#9ca3af' : '#6b7280';
+Chart.defaults.borderColor = isDarkMode ? '#374151' : '#e5e7eb';
+
+// Render functions
+function renderSummaryCard(data) {
+    if (!data.comparison_mode) {
+        // Single dataset mode
+        const ds = data.dataset;
+        return `
+            <div class="card summary-card">
+                <div class="card-header">
+                    <span class="icon">📊</span>
+                    <h2>Dataset Summary</h2>
+                </div>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="label">Dataset</div>
+                        <div class="value" style="font-size: 1rem;">${escapeHtml(ds.path || 'Unknown')}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Samples</div>
+                        <div class="value">${formatNumber(ds.sample_count, 0)}</div>
+                    </div>
+                    ${ds.lexical ? `
+                    <div class="summary-item">
+                        <div class="label">Distinct-2</div>
+                        <div class="value">${formatPercentage(ds.lexical.distinct_2)}</div>
+                    </div>
+                    ` : ''}
+                    ${ds.perplexity ? `
+                    <div class="summary-item">
+                        <div class="label">Mean Perplexity</div>
+                        <div class="value">${formatNumber(ds.perplexity.mean_perplexity)}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    // Comparison mode
+    const orig = data.original || {};
+    const aug = data.augmented || {};
+    const delta = data.delta || {};
+
+    const origCount = orig.sample_count || (orig.lexical ? orig.lexical.sample_count : 0);
+    const augCount = aug.sample_count || (aug.lexical ? aug.lexical.sample_count : 0);
+
+    return `
+        <div class="card summary-card">
+            <div class="card-header">
+                <span class="icon">📊</span>
+                <h2>Comparison Summary</h2>
+            </div>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="label">Dataset Size</div>
+                    <div class="value">${formatNumber(origCount, 0)} → ${formatNumber(augCount, 0)}</div>
+                    ${formatDelta(delta.sample_count_change)}
+                </div>
+                <div class="summary-item">
+                    <div class="label">Lexical Diversity (D-2)</div>
+                    <div class="value">${formatPercentage(orig.lexical?.distinct_2)} → ${formatPercentage(aug.lexical?.distinct_2)}</div>
+                    ${formatDelta(delta.distinct_2_change)}
+                </div>
+                ${orig.perplexity ? `
+                <div class="summary-item">
+                    <div class="label">Mean Perplexity</div>
+                    <div class="value">${formatNumber(orig.perplexity.mean_perplexity)} → ${formatNumber(aug.perplexity.mean_perplexity)}</div>
+                    ${formatDelta(delta.mean_perplexity_change)}
+                </div>
+                ` : ''}
+                ${orig.vendi_score !== undefined ? `
+                <div class="summary-item">
+                    <div class="label">Vendi Score</div>
+                    <div class="value">${formatNumber(orig.vendi_score)} → ${formatNumber(aug.vendi_score)}</div>
+                    ${formatDelta(delta.vendi_score_change)}
+                </div>
+                ` : ''}
+            </div>
+            ${data.summary ? `
+            <div class="interpretation">
+                <p><strong>Summary:</strong> ${escapeHtml(data.summary).replace(/\n/g, '<br>')}</p>
+            </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function renderLexicalSection(data) {
+    const isComparison = data.comparison_mode;
+
+    if (isComparison) {
+        const orig = data.original?.lexical || {};
+        const aug = data.augmented?.lexical || {};
+        const delta = data.delta || {};
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📝</span>
+                    <h2>Lexical Diversity</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="distinct-n-chart"></canvas>
+                </div>
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Original</th>
+                            <th>Augmented</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Distinct-1</td>
+                            <td class="numeric">${formatNumber(orig.distinct_1, 4)}</td>
+                            <td class="numeric">${formatNumber(aug.distinct_1, 4)}</td>
+                            <td class="numeric">${formatDelta(delta.distinct_1_change)}</td>
+                        </tr>
+                        <tr>
+                            <td>Distinct-2</td>
+                            <td class="numeric">${formatNumber(orig.distinct_2, 4)}</td>
+                            <td class="numeric">${formatNumber(aug.distinct_2, 4)}</td>
+                            <td class="numeric">${formatDelta(delta.distinct_2_change)}</td>
+                        </tr>
+                        <tr>
+                            <td>Distinct-3</td>
+                            <td class="numeric">${formatNumber(orig.distinct_3, 4)}</td>
+                            <td class="numeric">${formatNumber(aug.distinct_3, 4)}</td>
+                            <td class="numeric">${formatDelta(delta.distinct_3_change)}</td>
+                        </tr>
+                        <tr>
+                            <td>Type-Token Ratio</td>
+                            <td class="numeric">${formatNumber(orig.type_token_ratio, 4)}</td>
+                            <td class="numeric">${formatNumber(aug.type_token_ratio, 4)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        <tr>
+                            <td>Total Tokens</td>
+                            <td class="numeric">${formatNumber(orig.total_tokens, 0)}</td>
+                            <td class="numeric">${formatNumber(aug.total_tokens, 0)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        const lex = data.dataset?.lexical || {};
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📝</span>
+                    <h2>Lexical Diversity</h2>
+                </div>
+                <div class="chart-container small">
+                    <canvas id="distinct-n-chart"></canvas>
+                </div>
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Distinct-1</td><td class="numeric">${formatNumber(lex.distinct_1, 4)}</td></tr>
+                        <tr><td>Distinct-2</td><td class="numeric">${formatNumber(lex.distinct_2, 4)}</td></tr>
+                        <tr><td>Distinct-3</td><td class="numeric">${formatNumber(lex.distinct_3, 4)}</td></tr>
+                        <tr><td>Type-Token Ratio</td><td class="numeric">${formatNumber(lex.type_token_ratio, 4)}</td></tr>
+                        <tr><td>Total Tokens</td><td class="numeric">${formatNumber(lex.total_tokens, 0)}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+}
+
+function renderPerplexitySection(data) {
+    const isComparison = data.comparison_mode;
+
+    if (isComparison) {
+        const origPpl = data.original?.perplexity;
+        const augPpl = data.augmented?.perplexity;
+
+        if (!origPpl || !augPpl) return '';
+
+        const delta = data.delta || {};
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📈</span>
+                    <h2>Perplexity Analysis</h2>
+                    <span class="badge info">${escapeHtml(origPpl.model || 'Unknown model')}</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="perplexity-chart"></canvas>
+                </div>
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Statistic</th>
+                            <th>Original</th>
+                            <th>Augmented</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Mean</td>
+                            <td class="numeric">${formatNumber(origPpl.mean_perplexity)}</td>
+                            <td class="numeric">${formatNumber(augPpl.mean_perplexity)}</td>
+                            <td class="numeric">${formatDelta(delta.mean_perplexity_change)}</td>
+                        </tr>
+                        <tr>
+                            <td>Std Dev</td>
+                            <td class="numeric">${formatNumber(origPpl.std_perplexity)}</td>
+                            <td class="numeric">${formatNumber(augPpl.std_perplexity)}</td>
+                            <td class="numeric">${formatDelta(delta.std_perplexity_change)}</td>
+                        </tr>
+                        <tr>
+                            <td>Median</td>
+                            <td class="numeric">${formatNumber(origPpl.median_perplexity)}</td>
+                            <td class="numeric">${formatNumber(augPpl.median_perplexity)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        <tr>
+                            <td>Min</td>
+                            <td class="numeric">${formatNumber(origPpl.min_perplexity)}</td>
+                            <td class="numeric">${formatNumber(augPpl.min_perplexity)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        <tr>
+                            <td>Max</td>
+                            <td class="numeric">${formatNumber(origPpl.max_perplexity)}</td>
+                            <td class="numeric">${formatNumber(augPpl.max_perplexity)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        <tr>
+                            <td>P90</td>
+                            <td class="numeric">${formatNumber(origPpl.p90_perplexity)}</td>
+                            <td class="numeric">${formatNumber(augPpl.p90_perplexity)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        <tr>
+                            <td>P95</td>
+                            <td class="numeric">${formatNumber(origPpl.p95_perplexity)}</td>
+                            <td class="numeric">${formatNumber(augPpl.p95_perplexity)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="interpretation">
+                    <p><strong>Interpretation:</strong> ${getPerplexityInterpretation(origPpl.mean_perplexity, augPpl.mean_perplexity)}</p>
+                </div>
+            </div>
+        `;
+    } else {
+        const ppl = data.dataset?.perplexity;
+        if (!ppl) return '';
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📈</span>
+                    <h2>Perplexity Profile</h2>
+                    <span class="badge info">${escapeHtml(ppl.model || 'Unknown model')}</span>
+                </div>
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Statistic</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Mean</td><td class="numeric">${formatNumber(ppl.mean_perplexity)}</td></tr>
+                        <tr><td>Std Dev</td><td class="numeric">${formatNumber(ppl.std_perplexity)}</td></tr>
+                        <tr><td>Median</td><td class="numeric">${formatNumber(ppl.median_perplexity)}</td></tr>
+                        <tr><td>Min</td><td class="numeric">${formatNumber(ppl.min_perplexity)}</td></tr>
+                        <tr><td>Max</td><td class="numeric">${formatNumber(ppl.max_perplexity)}</td></tr>
+                        <tr><td>P90</td><td class="numeric">${formatNumber(ppl.p90_perplexity)}</td></tr>
+                        <tr><td>P95</td><td class="numeric">${formatNumber(ppl.p95_perplexity)}</td></tr>
+                        <tr><td>Valid Samples</td><td class="numeric">${formatNumber(ppl.valid_samples, 0)}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+}
+
+function renderSemanticSection(data) {
+    const isComparison = data.comparison_mode;
+
+    if (isComparison) {
+        const origSem = data.original?.semantic;
+        const augSem = data.augmented?.semantic;
+        const origVendi = data.original?.vendi_score;
+        const augVendi = data.augmented?.vendi_score;
+
+        if (!origSem && origVendi === undefined) return '';
+
+        const delta = data.delta || {};
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🧠</span>
+                    <h2>Semantic Diversity</h2>
+                </div>
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Original</th>
+                            <th>Augmented</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${origVendi !== undefined ? `
+                        <tr>
+                            <td>Vendi Score</td>
+                            <td class="numeric">${formatNumber(origVendi)}</td>
+                            <td class="numeric">${formatNumber(augVendi)}</td>
+                            <td class="numeric">${formatDelta(delta.vendi_score_change)}</td>
+                        </tr>
+                        ` : ''}
+                        ${origSem ? `
+                        <tr>
+                            <td>Effective Diversity Ratio</td>
+                            <td class="numeric">${formatPercentage(origSem.effective_diversity_ratio)}</td>
+                            <td class="numeric">${formatPercentage(augSem?.effective_diversity_ratio)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        <tr>
+                            <td>Avg Pairwise Distance</td>
+                            <td class="numeric">${formatNumber(origSem.avg_pairwise_distance, 4)}</td>
+                            <td class="numeric">${formatNumber(augSem?.avg_pairwise_distance, 4)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        <tr>
+                            <td>Embedding Spread</td>
+                            <td class="numeric">${formatNumber(origSem.embedding_spread, 4)}</td>
+                            <td class="numeric">${formatNumber(augSem?.embedding_spread, 4)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        <tr>
+                            <td>Centroid Distance</td>
+                            <td class="numeric">${formatNumber(origSem.centroid_distance, 4)}</td>
+                            <td class="numeric">${formatNumber(augSem?.centroid_distance, 4)}</td>
+                            <td class="numeric">-</td>
+                        </tr>
+                        ` : ''}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        const sem = data.dataset?.semantic;
+        if (!sem) return '';
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🧠</span>
+                    <h2>Semantic Diversity</h2>
+                </div>
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Vendi Score</td><td class="numeric">${formatNumber(sem.vendi_score)}</td></tr>
+                        <tr><td>Effective Diversity Ratio</td><td class="numeric">${formatPercentage(sem.effective_diversity_ratio)}</td></tr>
+                        <tr><td>Avg Pairwise Distance</td><td class="numeric">${formatNumber(sem.avg_pairwise_distance, 4)}</td></tr>
+                        <tr><td>Embedding Spread</td><td class="numeric">${formatNumber(sem.embedding_spread, 4)}</td></tr>
+                        <tr><td>Centroid Distance</td><td class="numeric">${formatNumber(sem.centroid_distance, 4)}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+}
+
+function renderAugmentationBreakdown(data) {
+    const contributions = data.augmentation_contributions;
+    if (!contributions || Object.keys(contributions).length === 0) return '';
+
+    return `
+        <div class="card">
+            <div class="card-header">
+                <span class="icon">🔧</span>
+                <h2>Augmentation Contribution</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="augmentation-chart"></canvas>
+            </div>
+            <table class="metrics-table">
+                <thead>
+                    <tr>
+                        <th>Augmentation Type</th>
+                        <th>Sample Count</th>
+                        <th>Mean Perplexity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Object.entries(contributions).map(([type, stats]) => `
+                        <tr>
+                            <td>${escapeHtml(type)}</td>
+                            <td class="numeric">${formatNumber(stats.sample_count, 0)}</td>
+                            <td class="numeric">${formatNumber(stats.mean_perplexity)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderMetadata(data) {
+    const meta = data.metadata || {};
+    return `
+        <div class="card">
+            <div class="card-header collapsible-header" onclick="toggleCollapsible(this)">
+                <span class="icon">ℹ️</span>
+                <h2>Report Metadata</h2>
+            </div>
+            <div class="collapsible-content">
+                <table class="metrics-table">
+                    <tbody>
+                        <tr><td>Generated</td><td>${data.generated_at || 'Unknown'}</td></tr>
+                        ${meta.git_commit ? `<tr><td>Git Commit</td><td>${escapeHtml(meta.git_commit)}</td></tr>` : ''}
+                        ${meta.git_branch ? `<tr><td>Git Branch</td><td>${escapeHtml(meta.git_branch)}</td></tr>` : ''}
+                        ${meta.irca_version ? `<tr><td>IRCA Version</td><td>${escapeHtml(meta.irca_version)}</td></tr>` : ''}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function getPerplexityInterpretation(origPpl, augPpl) {
+    if (!origPpl || !augPpl) return 'Insufficient data for interpretation.';
+
+    const change = (augPpl - origPpl) / origPpl;
+
+    if (change > 0.10) {
+        return 'Augmented dataset is significantly more challenging for the model (>10% perplexity increase). This indicates good diversity gain and should improve training robustness.';
+    } else if (change > 0.02) {
+        return 'Augmented dataset is moderately more challenging (2-10% increase). Some diversity gain detected. Consider stronger augmentation for better results.';
+    } else if (change > -0.02) {
+        return 'Augmented dataset has similar perplexity to original. Augmentation may not be adding significant diversity. Consider different augmentation strategies.';
+    } else {
+        return 'Augmented dataset has lower perplexity than original. This is unusual and may indicate the augmentation is making the data more predictable/repetitive.';
+    }
+}
+
+function toggleCollapsible(header) {
+    header.classList.toggle('collapsed');
+    const content = header.nextElementSibling;
+    content.classList.toggle('collapsed');
+}
+
+// Chart rendering
+function renderCharts(data) {
+    // Distinct-n chart
+    const distinctCtx = document.getElementById('distinct-n-chart');
+    if (distinctCtx) {
+        if (data.comparison_mode) {
+            const orig = data.original?.lexical || {};
+            const aug = data.augmented?.lexical || {};
+            new Chart(distinctCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Distinct-1', 'Distinct-2', 'Distinct-3'],
+                    datasets: [
+                        {
+                            label: 'Original',
+                            data: [orig.distinct_1, orig.distinct_2, orig.distinct_3],
+                            backgroundColor: colors.primaryLight,
+                            borderColor: colors.primary,
+                            borderWidth: 2,
+                        },
+                        {
+                            label: 'Augmented',
+                            data: [aug.distinct_1, aug.distinct_2, aug.distinct_3],
+                            backgroundColor: colors.secondaryLight,
+                            borderColor: colors.secondary,
+                            borderWidth: 2,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            title: { display: true, text: 'Ratio' }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(4) || 'N/A'}`
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            const lex = data.dataset?.lexical || {};
+            new Chart(distinctCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Distinct-1', 'Distinct-2', 'Distinct-3'],
+                    datasets: [{
+                        label: 'Value',
+                        data: [lex.distinct_1, lex.distinct_2, lex.distinct_3],
+                        backgroundColor: colors.primaryLight,
+                        borderColor: colors.primary,
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 1 }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    }
+
+    // Perplexity comparison chart
+    const pplCtx = document.getElementById('perplexity-chart');
+    if (pplCtx && data.comparison_mode) {
+        const origPpl = data.original?.perplexity || {};
+        const augPpl = data.augmented?.perplexity || {};
+
+        new Chart(pplCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Mean', 'Median', 'P90', 'P95', 'Std Dev'],
+                datasets: [
+                    {
+                        label: 'Original',
+                        data: [
+                            origPpl.mean_perplexity,
+                            origPpl.median_perplexity,
+                            origPpl.p90_perplexity,
+                            origPpl.p95_perplexity,
+                            origPpl.std_perplexity
+                        ],
+                        backgroundColor: colors.primaryLight,
+                        borderColor: colors.primary,
+                        borderWidth: 2,
+                    },
+                    {
+                        label: 'Augmented',
+                        data: [
+                            augPpl.mean_perplexity,
+                            augPpl.median_perplexity,
+                            augPpl.p90_perplexity,
+                            augPpl.p95_perplexity,
+                            augPpl.std_perplexity
+                        ],
+                        backgroundColor: colors.secondaryLight,
+                        borderColor: colors.secondary,
+                        borderWidth: 2,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Perplexity' }
+                    }
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2) || 'N/A'}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Augmentation contribution chart
+    const augCtx = document.getElementById('augmentation-chart');
+    if (augCtx && data.augmentation_contributions) {
+        const contributions = data.augmentation_contributions;
+        const labels = Object.keys(contributions);
+        const values = labels.map(k => contributions[k].mean_perplexity);
+
+        // Sort by perplexity (descending)
+        const sorted = labels.map((l, i) => ({ label: l, value: values[i] }))
+            .sort((a, b) => b.value - a.value);
+
+        new Chart(augCtx, {
+            type: 'bar',
+            data: {
+                labels: sorted.map(s => s.label),
+                datasets: [{
+                    label: 'Mean Perplexity',
+                    data: sorted.map(s => s.value),
+                    backgroundColor: sorted.map(s =>
+                        s.label === 'baseline' ? colors.gray : colors.warning
+                    ),
+                    borderColor: sorted.map(s =>
+                        s.label === 'baseline' ? colors.gray : colors.warning
+                    ),
+                    borderWidth: 1,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Mean Perplexity' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `Mean PPL: ${ctx.parsed.x?.toFixed(2) || 'N/A'}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Main render function
+function render() {
+    const container = document.getElementById('report-content');
+
+    // Update timestamp
+    const timeEl = document.getElementById('generated-time');
+    if (timeEl && reportData.generated_at) {
+        timeEl.textContent = new Date(reportData.generated_at).toLocaleString();
+    }
+
+    // Build HTML
+    let html = '';
+    html += renderSummaryCard(reportData);
+
+    html += '<div class="two-column">';
+    html += renderLexicalSection(reportData);
+    html += renderSemanticSection(reportData);
+    html += '</div>';
+
+    html += renderPerplexitySection(reportData);
+    html += renderAugmentationBreakdown(reportData);
+    html += renderMetadata(reportData);
+
+    container.innerHTML = html;
+
+    // Render charts after DOM is updated
+    setTimeout(() => renderCharts(reportData), 0);
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', render);
+
+    </script>
+</body>
+</html>

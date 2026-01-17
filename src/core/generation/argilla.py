@@ -10,7 +10,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from core.domain import Trace
+    from src.core.domain import Trace
 
 logger = logging.getLogger(__name__)
 

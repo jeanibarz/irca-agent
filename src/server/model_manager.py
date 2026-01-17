@@ -7,7 +7,7 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-from config import get_settings
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class ModelManager:
         """
         Load model into memory under a specific alias.
         """
-        from server.events import EventBroadcaster
+        from src.server.events import EventBroadcaster
 
         broadcaster = EventBroadcaster.get_instance()
 
@@ -202,7 +202,7 @@ class ModelManager:
         return result_container[0]
 
     async def eject_model(self, alias: str = "default") -> None:
-        from server.events import EventBroadcaster
+        from src.server.events import EventBroadcaster
 
         broadcaster = EventBroadcaster.get_instance()
 
@@ -377,6 +377,14 @@ class ModelManager:
             self._generate_sync, model, tokenizer, prompt, max_new_tokens, temperature, top_p, stop_tokens
         )  # type: ignore[no-any-return]
 
+    # Default stop sequences for IRCA agent format
+    DEFAULT_STOP_SEQUENCES = [
+        "### USER QUERY",  # Stop before generating fake user queries
+        "### INSTRUCTIONS",  # Stop before regenerating instructions
+        "<|wait|>",  # Qwen wait token
+        "<|im_end|>",  # ChatML end token
+    ]
+
     def _generate_sync(
         self,
         model: Any,
@@ -387,7 +395,19 @@ class ModelManager:
         top_p: float,
         stop_tokens: list[str] | None = None,
     ) -> str:
+        from transformers import StoppingCriteriaList
+
         inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+
+        # Merge default and custom stop sequences
+        all_stop_sequences = list(self.DEFAULT_STOP_SEQUENCES)
+        if stop_tokens:
+            all_stop_sequences.extend(stop_tokens)
+
+        # Create stopping criteria for early termination
+        # Pass prompt length so we only check GENERATED tokens, not the prompt
+        prompt_length = inputs.input_ids.shape[1]
+        stopping_criteria = StoppingCriteriaList([StopOnSequences(tokenizer, all_stop_sequences, prompt_length)])
 
         with torch.no_grad():
             outputs = model.generate(
@@ -397,6 +417,7 @@ class ModelManager:
                 temperature=temperature,
                 top_p=top_p,
                 pad_token_id=tokenizer.eos_token_id,
+                stopping_criteria=stopping_criteria,
             )
 
         # Slice to keep only new tokens
@@ -404,4 +425,71 @@ class ModelManager:
         generated_tokens = outputs[0][input_len:]
         response = tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
+        # Clean up: truncate at stop sequence (in case partial match)
+        response = self._truncate_at_stop_sequences(response, all_stop_sequences)
+
         return str(response)
+
+    def _truncate_at_stop_sequences(self, text: str, stop_sequences: list[str]) -> str:
+        """Truncate text at the first occurrence of any stop sequence."""
+        earliest_pos = len(text)
+        for stop_seq in stop_sequences:
+            pos = text.find(stop_seq)
+            if pos != -1 and pos < earliest_pos:
+                earliest_pos = pos
+        return text[:earliest_pos].strip()
+
+
+class StopOnSequences:
+    """Stopping criteria that stops generation when any stop sequence is detected."""
+
+    def __init__(self, tokenizer: Any, stop_sequences: list[str], prompt_length: int):
+        self.tokenizer = tokenizer
+        self.stop_sequences = stop_sequences
+        self.prompt_length = prompt_length  # Track where generation starts
+        self.call_count = 0
+        # Pre-compute stop sequence token patterns for efficiency
+        self.stop_patterns: list[tuple[str, list[int]]] = []
+        for seq in stop_sequences:
+            tokens = tokenizer.encode(seq, add_special_tokens=False)
+            if tokens:
+                self.stop_patterns.append((seq, tokens))
+                logger.info(f"Stop pattern: {seq!r} -> {tokens}")
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:
+        self.call_count += 1
+        # Only check GENERATED tokens (after prompt)
+        generated_length = input_ids.shape[1] - self.prompt_length
+
+        if self.call_count == 1:
+            logger.info(
+                f"StopOnSequences first call: prompt_length={self.prompt_length}, total_length={input_ids.shape[1]}"
+            )
+
+        if generated_length < 5:
+            return False  # Don't stop too early
+
+        # Check the last N tokens against stop patterns
+        for seq_text, pattern in self.stop_patterns:
+            pattern_len = len(pattern)
+            if generated_length >= pattern_len:
+                last_tokens = input_ids[0, -pattern_len:].tolist()
+                if last_tokens == pattern:
+                    logger.info(f"STOP: Token pattern match for {seq_text!r}")
+                    return True
+
+        # Check decoded text every 20 tokens
+        if generated_length > 20 and generated_length % 20 == 0:
+            # Decode only the GENERATED tokens
+            generated_tokens = input_ids[0, self.prompt_length :]
+            generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+
+            if self.call_count % 100 == 0:
+                logger.info(f"Generated {generated_length} tokens, text ends with: ...{generated_text[-100:]!r}")
+
+            for seq in self.stop_sequences:
+                if seq in generated_text:
+                    logger.info(f"STOP: Text match for {seq!r}")
+                    return True
+
+        return False

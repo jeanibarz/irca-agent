@@ -4,9 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from config import get_settings
-from server.events import EventBroadcaster
-from server.routers import conversations, generation, models, synthetic
+from src.config import get_settings
+from src.server.events import EventBroadcaster
+from src.server.routers import conversations, generation, models, synthetic
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -59,4 +59,4 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("server.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("src.server.main:app", host="0.0.0.0", port=8000, reload=True)

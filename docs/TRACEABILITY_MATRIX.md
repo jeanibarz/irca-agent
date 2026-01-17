@@ -20,6 +20,44 @@ This matrix maps Functional Requirements (FR) to their Implementation components
 | **FR-DATA-04** | Stochastic Config | `src/config/settings.py` | `tests/unit/test_augmentation.py` |
 | **FR-DATA-05** | Feature Flipping | `src/finetuning/model_finetuning.py` | `tests/unit/test_augmentation.py` |
 | **FR-DATA-06** | Parallel Execution | `src/finetuning/model_finetuning.py` | Integration Training Test |
+| **FR-DATA-07** | Model-Aware Diversification | `src/config/settings.py` | Unit Test (Settings) |
+| **FR-DATA-08** | Separated Augmentation Pipeline | `src/cli/commands/dataset.py` | `tests/integration/test_dataset_augmentation.py::TestDatasetAugmentationCLI` |
+| **FR-DATA-09** | Markdown Link Preservation | `src/cli/commands/dataset.py::translate_preserving_links` | `tests/integration/test_dataset_augmentation.py::TestMarkdownLinkPreservation` |
+| **FR-DATA-10** | Dataset Inspection | `src/cli/commands/dataset.py::inspect` | `tests/integration/test_dataset_augmentation.py::TestDatasetInspect` |
+| **FR-DATA-11** | Dataset Size Multiplication | `src/augmentation/pipeline.py`* | `tests/integration/test_augmentation_pipeline.py::TestDatasetMultiplication`* |
+| **FR-DATA-12** | Pipeline Configuration | `src/augmentation/pipeline.py`*<br>`src/augmentation/config.py`* | `tests/unit/test_augmentation_config.py::TestConfigValidation`* |
+| **FR-DATA-13** | Feature Combination | `src/augmentation/pipeline.py`* | `tests/integration/test_augmentation_pipeline.py::TestFeatureCombination`* |
+| **FR-DATA-14** | Post-Generation Deduplication | `src/augmentation/pipeline.py`* | `tests/unit/test_augmentation_pipeline.py::TestDeduplication`* |
+| **FR-DATA-15** | Augmentation Metadata | `src/augmentation/metadata.py`* | `tests/unit/test_augmentation_metadata.py`* |
+| **FR-DATA-16** | W&B Augmentation Tracking | `src/augmentation/tracking.py`* | `tests/integration/test_augmentation_pipeline.py::TestWandbTracking`* |
+| **FR-DATA-17** | Config-Driven CLI | `src/cli/commands/dataset.py` | `tests/integration/test_augmentation_pipeline.py::TestConfigDrivenCLI`* |
+| **FR-DATA-18** | Perplexity Diversity Metrics | `src/diversity/perplexity.py`* | `tests/unit/test_diversity_perplexity.py`* |
+| **FR-DATA-19** | Diversity CLI | `src/cli/commands/dataset.py` | `tests/integration/test_diversity_cli.py`* |
+| **FR-DATA-20** | Diversity in Metadata | `src/augmentation/metadata.py`<br>`src/diversity/perplexity.py`* | `tests/integration/test_augmentation_pipeline.py::TestDiversityMetadata`* |
+| **FR-DATA-21** | Diversity Comparison | `src/diversity/perplexity.py`* | `tests/unit/test_diversity_perplexity.py::TestComparison`* |
+| **FR-DATA-22** | Augmentation Effectiveness | `src/diversity/effectiveness.py`* | `tests/integration/test_diversity_effectiveness.py`* |
+| **FR-DATA-23** | Quick Diversity Mode | `src/diversity/lexical.py`*<br>`src/diversity/semantic.py`* | `tests/unit/test_diversity_lexical.py`*<br>`tests/unit/test_diversity_semantic.py`* |
+| **FR-DATA-24** | Dataset Format Command | `src/formatting/formatter.py`<br>`src/cli/commands/dataset.py` | `tests/unit/test_formatting_formatter.py`<br>`tests/integration/test_format_cli.py` |
+| **FR-DATA-25** | Staged Augmentation | `src/formatting/steps.py`<br>`src/formatting/formatter.py` | `tests/unit/test_formatting_steps.py`<br>`tests/unit/test_formatting_formatter.py` |
+| **FR-DATA-26** | Format Baseline | `src/formatting/formatter.py`<br>`src/formatting/config.py` | `tests/unit/test_formatting_formatter.py::TestDatasetFormatter::test_format_baseline`<br>`tests/integration/test_format_cli.py::TestFormatCLIBaseline` |
+| **FR-DATA-27** | Format Config | `src/formatting/config.py` | `tests/unit/test_formatting_config.py` |
+| **FR-DATA-28** | Diversity Evaluation Workflow | `src/cli/commands/dataset.py`<br>`src/formatting/formatter.py` | `tests/integration/test_format_cli.py::TestFormatDiversityWorkflow` |
+| **FR-DIV-10** | HTML Report Generation | `src/diversity/report.py` | `tests/unit/test_diversity_report.py::TestGenerateReport` |
+| **FR-DIV-11** | Report Visualizations | `src/diversity/report.py` | `tests/unit/test_diversity_report.py::TestGenerateReport::test_generate_report_contains_chartjs` |
+| **FR-DIV-12** | Report CLI Flag | `src/cli/commands/dataset.py` | `tests/integration/test_diversity_cli.py::TestDiversityCLI::test_report_flag` |
+| **FR-DIV-13** | Report Metadata | `src/diversity/report.py` | `tests/unit/test_diversity_report.py::TestPrepareReportData::test_prepare_includes_metadata` |
+| **FR-DIV-14** | Report Comparison Mode | `src/diversity/report.py` | `tests/unit/test_diversity_report.py::TestPrepareReportData::test_prepare_comparison_mode`<br>`tests/integration/test_diversity_cli.py::TestDiversityCLI::test_report_comparison_mode` |
+| **FR-DIV-15** | Report Single Dataset Mode | `src/diversity/report.py` | `tests/unit/test_diversity_report.py::TestPrepareReportData::test_prepare_single_mode`<br>`tests/integration/test_diversity_cli.py::TestDiversityCLI::test_report_single_mode` |
+| **NFR-DIV-01** | Report Portability | `src/diversity/report.py` | `tests/unit/test_diversity_report.py::TestGenerateReport::test_generate_report_self_contained` |
+| **NFR-DIV-02** | Report File Size | `src/diversity/report.py` | `tests/unit/test_diversity_report.py::TestReportIntegration::test_report_with_full_metrics` |
+| **NFR-DIV-03** | Report Accessibility | `src/diversity/report.py` | `tests/unit/test_diversity_report.py::TestGenerateReport::test_generate_report_contains_styles` |
+| **NFR-DIV-04** | Report Browser Compatibility | `src/diversity/report.py` | Manual Verification (Browser) |
+| **FR-EVAL-01** | Completion-Only Perplexity | `src/diversity/perplexity.py::compute_completion_perplexity`<br>`src/diversity/utils.py::extract_completion` | `tests/unit/test_diversity_perplexity.py::TestCompletionPerplexity`* |
+| **FR-EVAL-02** | Baseline Model Comparison | `src/diversity/evaluation.py::evaluate_model_robustness` | `tests/unit/test_diversity_evaluation.py::TestModelRobustness`* |
+| **FR-EVAL-03** | Generalization Gap | `src/diversity/evaluation.py::evaluate_generalization` | `tests/unit/test_diversity_evaluation.py::TestGeneralization`* |
+| **FR-EVAL-04** | Evaluation Mode Flag | `src/cli/commands/dataset.py` | `tests/integration/test_diversity_cli.py::TestDiversityCLI::test_eval_mode_flag`* |
+| **FR-EVAL-05** | Robustness Report | `src/diversity/evaluation.py`<br>`src/diversity/report.py` | `tests/integration/test_diversity_cli.py::TestDiversityCLI::test_robustness_report`* |
+| **NFR-EVAL-01** | Memory Efficiency | `src/diversity/evaluation.py` | Manual Verification (Single GPU) |
 | **FR-PLAY-01** | Interactive Chat | `ui/src/App.tsx`<br>`ui/src/components/ChatInterface.tsx`<br>`src/server/routers/generation.py` | Manual Verification (Browser) |
 | **FR-PLAY-02** | Model Management | `src/server/model_manager.py`<br>`src/server/routers/models.py`<br>`ui/src/components/Sidebar.tsx` | Manual Verification (UI Buttons) |
 | **FR-PLAY-03** | Synthetic Red-Teaming | `src/server/routers/synthetic.py`<br>`ui/src/components/ChatInterface.tsx` | Manual Verification (Magic Buttons) |

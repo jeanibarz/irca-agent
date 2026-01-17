@@ -17,15 +17,15 @@ class FunctionsFactory:
     def load_function_variants(version: str) -> list[dict[str, Any]]:
         # type: ignore[no-redef]
         if version == "v1":
-            from dataset_generation.function_variants.gpt4_functions_v1 import (
+            from src.dataset_generation.function_variants.gpt4_functions_v1 import (
                 functions,
             )
         elif version == "v2":
-            from dataset_generation.function_variants.gpt4_functions_v2 import (
+            from src.dataset_generation.function_variants.gpt4_functions_v2 import (
                 functions,
             )
         elif version == "glaive_v2":
-            from dataset_generation.function_variants.glaive_v2_functions import (
+            from src.dataset_generation.function_variants.glaive_v2_functions import (
                 functions,
             )
         else:

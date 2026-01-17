@@ -1,10 +1,9 @@
-nohup: ignoring input
 
 > ui@0.0.0 dev
-> vite
+> vite --host 0.0.0.0 --port 3000
 
 
-  VITE v7.3.1  ready in 213 ms
+  VITE v7.3.1  ready in 304 ms
 
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://172.21.254.108:3000/

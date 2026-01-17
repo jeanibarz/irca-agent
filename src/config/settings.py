@@ -5,12 +5,15 @@ All configuration is loaded from environment variables or .env file.
 Use `get_settings()` to get a cached singleton instance.
 """
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class ModelConfig(BaseSettings):
@@ -39,7 +42,7 @@ class Settings(BaseSettings):
     # Paths
     # ===========================================
     workspace_dir: Path = Field(
-        default=Path("/workspace"),
+        default_factory=Path.cwd,
         description="Base workspace directory",
     )
     models_dir: Path = Field(
@@ -105,12 +108,12 @@ class Settings(BaseSettings):
 
     # LoRA Configuration
     lora_r: int = Field(
-        default=128,
+        default=64,
         description="LoRA rank (r parameter)",
         ge=1,
     )
     lora_alpha: int = Field(
-        default=64,
+        default=32,
         description="LoRA alpha parameter",
         ge=1,
     )
@@ -169,7 +172,7 @@ class Settings(BaseSettings):
         description="Random seed for deterministic diversification",
     )
     augment_dynamic: bool = Field(
-        default=False,
+        default=True,
         description="If True, diversification happens in real-time during training (slower but more variety).",
     )
 
@@ -234,6 +237,10 @@ class Settings(BaseSettings):
                 "base_model": "Doctor-Shotgun/TinyLlama-1.1B-32k",
                 "model_name": f"TinyLlama-1.1B_irca_agent_{self.version}",
             },
+            "qwen-7b": {
+                "base_model": "Qwen/Qwen2.5-7B-Instruct",
+                "model_name": f"Qwen2.5-7B_irca_agent_{self.version}",
+            },
             "qwen-4b": {
                 "base_model": "Qwen/Qwen1.5-4B-Chat",
                 "model_name": f"Qwen1.5-4B_irca_agent_{self.version}",
@@ -241,6 +248,14 @@ class Settings(BaseSettings):
             "qwen-14b": {
                 "base_model": "Qwen/Qwen1.5-14B-Chat",
                 "model_name": f"Qwen1.5-14B_irca_agent_{self.version}",
+            },
+            "qwen3-8b": {
+                "base_model": "Qwen/Qwen3-8B",
+                "model_name": f"Qwen3-8B_irca_agent_{self.version}",
+            },
+            "qwen3-4b": {
+                "base_model": "Qwen/Qwen3-4B",
+                "model_name": f"Qwen3-4B_irca_agent_{self.version}",
             },
         }
 
@@ -251,15 +266,29 @@ class Settings(BaseSettings):
 
     def get_training_config(self, model_type: str | None = None) -> dict[str, Any]:
         """
-        Get complete training configuration.
-
-        Args:
-            model_type: Model type to use. Uses default if None.
-
-        Returns:
-            Complete configuration dictionary for training.
+        Get complete training configuration, filtered by model compatibility.
         """
+        model_type = model_type or self.default_model_type
         model_config = self.get_model_config(model_type)
+
+        # Define model-specific language compatibility
+        # Mistral is mostly Western/European focused
+        mistral_compatible = {"en", "fr", "es", "pt", "ru", "de", "tr", "vi", "it"}
+
+        # Qwen-2.5 is massively multilingual (29+ languages)
+        # We allow all requested 19 languages for Qwen
+
+        requested_languages = list(self.augment_languages)
+        if "mistral" in model_type:
+            filtered_languages = [lang for lang in requested_languages if lang in mistral_compatible]
+            if len(filtered_languages) < len(requested_languages):
+                logger.warning(
+                    f"Model {model_type} detected. Filtering diversification languages "
+                    f"from {len(requested_languages)} to {len(filtered_languages)} compatible ones."
+                )
+        else:
+            # Qwen and others
+            filtered_languages = requested_languages
 
         return {
             # Dataset
@@ -278,7 +307,7 @@ class Settings(BaseSettings):
             "max_seq_length": self.max_seq_length,
             # Augmentation
             "augment_enabled": self.augment_enabled,
-            "augment_languages": self.augment_languages,
+            "augment_languages": filtered_languages,
             "augment_ratio": self.augment_ratio,
             "augment_model_name_template": self.augment_model_name_template,
             "augment_max_length": self.augment_max_length,

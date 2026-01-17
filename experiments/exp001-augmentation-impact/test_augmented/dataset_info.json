@@ -1,0 +1,65 @@
+{
+  "citation": "",
+  "description": "",
+  "features": {
+    "agent_trace": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "user_query": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "available_functions": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "corrected_agent_trace-suggestion": {
+      "dtype": "null",
+      "_type": "Value"
+    },
+    "corrected_agent_trace-suggestion-metadata": {
+      "agent": {
+        "dtype": "null",
+        "_type": "Value"
+      },
+      "score": {
+        "dtype": "null",
+        "_type": "Value"
+      },
+      "type": {
+        "dtype": "null",
+        "_type": "Value"
+      }
+    },
+    "external_id": {
+      "dtype": "null",
+      "_type": "Value"
+    },
+    "metadata": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "original_index": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "variant_id": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "augmentations": {
+      "feature": {
+        "dtype": "string",
+        "_type": "Value"
+      },
+      "_type": "Sequence"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}

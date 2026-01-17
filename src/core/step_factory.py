@@ -6,14 +6,14 @@ New code should import from `core.domain` instead.
 
 Example:
     # Old way (still works)
-    from core.step_factory import create_step_model, StepType
+    from src.core.step_factory import create_step_model, StepType
 
     # New way (preferred)
-    from core.domain import create_step, StepType
+    from src.core.domain import create_step, StepType
 """
 
 # Re-export everything from the new location
-from core.domain.steps import (
+from src.core.domain.steps import (
     STEP_MODEL_MAPPING,
     ActionChoiceStep,
     BaseStep,

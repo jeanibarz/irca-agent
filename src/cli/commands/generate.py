@@ -10,7 +10,7 @@ from pathlib import Path
 
 import click
 
-from config import get_settings
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +83,9 @@ def traces(
         # Use a specific model
         irca generate traces --model mistralai/Mistral-7B-v0.1
     """
-    from core.generation import TraceGenerator
-    from core.utils import shuffle_json_functions
     from datasets import load_from_disk  # type: ignore
+    from src.core.generation import TraceGenerator
+    from src.core.utils import shuffle_json_functions
 
     settings = get_settings()
     verbose = ctx.obj.get("verbose", False)
